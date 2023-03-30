@@ -3,7 +3,6 @@ import { loadService } from "@dcl/rpc/dist/codegen"
 import { Action, QuestsServiceDefinition, QuestState } from "./quests"
 import { createRpcClient, RpcClient } from "@dcl/rpc"
 import { WebSocketTransport } from "@dcl/rpc/dist/transports/WebSocket"
-import { WebSocket } from "ws"
 import { StartClient, StateUpdateCallback } from "./types"
 
 type ClientState = {
@@ -24,20 +23,23 @@ export async function createQuestsClient(ws: string): Promise<StartClient> {
 
   // Keep state up to date on every received update
   async function subscribeAndUpdateState(state: ClientState, userAddress: string) {
+    console.log(`About to listen to updates from user ${userAddress}`)
     for await (const update of client.subscribe({ userAddress })) {
+      console.log(`Update received ${update}`)
       // event sent had no impact on any quest state
       if (update.eventIgnored) {
         state.processingEvents = state.processingEvents.filter((event) => event.eventId === update.eventIgnored)
       }
 
       // there was an update on a quest state
-      if (update.questState) {
-        state.questStates[update.questState.questInstanceId] = update.questState
+      if (update.questState?.questState) {
+        state.questStates[update.questState.questInstanceId] = update.questState.questState
         for (const callback of state.callbacks) {
           callback(state.questStates)
         }
       }
     }
+    console.log("A ver pepe")
   }
 
   return {

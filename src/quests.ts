@@ -3,7 +3,9 @@ import _m0 from "protobufjs/minimal"
 
 export const protobufPackage = "decentraland.quests"
 
-export interface User {
+/** This is living here during the PoC. After that, this must be downloaded from the protocol repo on Decentraland Github */
+
+export interface UserAddress {
   userAddress: string
 }
 
@@ -14,7 +16,7 @@ export interface StartQuestRequest {
 
 export interface StartQuestResponse {
   /**
-   * There are a few valid reasons not to be accepted:
+   * There are a few valid reasons to not be accepted:
    *  - Quest is not found
    *  - Quest is deactivated (the owner deleted it)
    *  - User already started the quest
@@ -30,7 +32,7 @@ export interface AbortQuestRequest {
 
 export interface AbortQuestResponse {
   /**
-   * There are a few valid reasons not to be accepted:
+   * There are a few valid reasons to not be accepted:
    *  - Quest instance is not found
    *  - Quest instance is from another user
    *  - Quest instance already aborted
@@ -40,7 +42,7 @@ export interface AbortQuestResponse {
 }
 
 export interface Event {
-  userAddress: string
+  address: string
   action: Action | undefined
 }
 
@@ -49,16 +51,29 @@ export interface EventResponse {
   accepted: boolean
 }
 
-/**
- * Example:
- * Action {
- *   type: "Location",
- *   parameters: {
- *     x: 10,
- *     y: 10,
- *   }
- * }
- */
+export interface QuestDefinition {
+  steps: Step[]
+  /**
+   * / Connections between steps
+   * /
+   * / First position in the tuple is for `from` and second one `to`
+   */
+  connections: Connection[]
+}
+
+export interface Connection {
+  stepFrom: string
+  stepTo: string
+}
+
+export interface Step {
+  id: string
+  description: string
+  tasks: Task[]
+  /** / Allow hooks on every completed step */
+  onCompleteHook?: string | undefined
+}
+
 export interface Action {
   type: string
   parameters: { [key: string]: string }
@@ -77,15 +92,10 @@ export interface Task {
 
 export interface StepContent {
   toDos: Task[]
-  taskCompleted: string[]
+  tasksCompleted: string[]
 }
 
 export interface QuestState {
-  questInstanceId: string
-  /**
-   * Every step has one or more tasks.
-   * Tasks description and completed tasks are tracked here.
-   */
   currentSteps: { [key: string]: StepContent }
   stepsLeft: number
   stepsCompleted: string[]
@@ -97,42 +107,32 @@ export interface QuestState_CurrentStepsEntry {
   value: StepContent | undefined
 }
 
+export interface QuestStateUpdate {
+  questInstanceId: string
+  questState: QuestState | undefined
+}
+
 export interface UserUpdate {
-  questState?: QuestState | undefined
+  questState?: QuestStateUpdate | undefined
   eventIgnored?: number | undefined
 }
 
-function createBaseUser(): User {
+function createBaseUserAddress(): UserAddress {
   return { userAddress: "" }
 }
 
-export const User = {
-  encode(message: User, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+export const UserAddress = {
+  encode(message: UserAddress, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.userAddress !== "") {
       writer.uint32(10).string(message.userAddress)
-    }
-    if ("_unknownFields" in message) {
-      const msgUnknownFields: any = (message as any)["_unknownFields"]
-      for (const key of Object.keys(msgUnknownFields)) {
-        const values = msgUnknownFields[key] as Uint8Array[]
-        for (const value of values) {
-          writer.uint32(parseInt(key, 10))
-          ;(writer as any)["_push"](
-            (val: Uint8Array, buf: Buffer, pos: number) => buf.set(val, pos),
-            value.length,
-            value
-          )
-        }
-      }
     }
     return writer
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): User {
+  decode(input: _m0.Reader | Uint8Array, length?: number): UserAddress {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
-    const message = createBaseUser()
-    ;(message as any)._unknownFields = {}
+    const message = createBaseUserAddress()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
@@ -147,36 +147,27 @@ export const User = {
       if ((tag & 7) == 4 || tag == 0) {
         break
       }
-      const startPos = reader.pos
       reader.skipType(tag & 7)
-      const buf = reader.buf.slice(startPos, reader.pos)
-      const list = (message as any)._unknownFields[tag]
-
-      if (list === undefined) {
-        ;(message as any)._unknownFields[tag] = [buf]
-      } else {
-        list.push(buf)
-      }
     }
     return message
   },
 
-  fromJSON(object: any): User {
+  fromJSON(object: any): UserAddress {
     return { userAddress: isSet(object.userAddress) ? String(object.userAddress) : "" }
   },
 
-  toJSON(message: User): unknown {
+  toJSON(message: UserAddress): unknown {
     const obj: any = {}
     message.userAddress !== undefined && (obj.userAddress = message.userAddress)
     return obj
   },
 
-  create<I extends Exact<DeepPartial<User>, I>>(base?: I): User {
-    return User.fromPartial(base ?? {})
+  create<I extends Exact<DeepPartial<UserAddress>, I>>(base?: I): UserAddress {
+    return UserAddress.fromPartial(base ?? {})
   },
 
-  fromPartial<I extends Exact<DeepPartial<User>, I>>(object: I): User {
-    const message = createBaseUser()
+  fromPartial<I extends Exact<DeepPartial<UserAddress>, I>>(object: I): UserAddress {
+    const message = createBaseUserAddress()
     message.userAddress = object.userAddress ?? ""
     return message
   },
@@ -194,20 +185,6 @@ export const StartQuestRequest = {
     if (message.questId !== "") {
       writer.uint32(18).string(message.questId)
     }
-    if ("_unknownFields" in message) {
-      const msgUnknownFields: any = (message as any)["_unknownFields"]
-      for (const key of Object.keys(msgUnknownFields)) {
-        const values = msgUnknownFields[key] as Uint8Array[]
-        for (const value of values) {
-          writer.uint32(parseInt(key, 10))
-          ;(writer as any)["_push"](
-            (val: Uint8Array, buf: Buffer, pos: number) => buf.set(val, pos),
-            value.length,
-            value
-          )
-        }
-      }
-    }
     return writer
   },
 
@@ -215,7 +192,6 @@ export const StartQuestRequest = {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseStartQuestRequest()
-    ;(message as any)._unknownFields = {}
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
@@ -237,16 +213,7 @@ export const StartQuestRequest = {
       if ((tag & 7) == 4 || tag == 0) {
         break
       }
-      const startPos = reader.pos
       reader.skipType(tag & 7)
-      const buf = reader.buf.slice(startPos, reader.pos)
-      const list = (message as any)._unknownFields[tag]
-
-      if (list === undefined) {
-        ;(message as any)._unknownFields[tag] = [buf]
-      } else {
-        list.push(buf)
-      }
     }
     return message
   },
@@ -286,20 +253,6 @@ export const StartQuestResponse = {
     if (message.accepted === true) {
       writer.uint32(8).bool(message.accepted)
     }
-    if ("_unknownFields" in message) {
-      const msgUnknownFields: any = (message as any)["_unknownFields"]
-      for (const key of Object.keys(msgUnknownFields)) {
-        const values = msgUnknownFields[key] as Uint8Array[]
-        for (const value of values) {
-          writer.uint32(parseInt(key, 10))
-          ;(writer as any)["_push"](
-            (val: Uint8Array, buf: Buffer, pos: number) => buf.set(val, pos),
-            value.length,
-            value
-          )
-        }
-      }
-    }
     return writer
   },
 
@@ -307,7 +260,6 @@ export const StartQuestResponse = {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseStartQuestResponse()
-    ;(message as any)._unknownFields = {}
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
@@ -322,16 +274,7 @@ export const StartQuestResponse = {
       if ((tag & 7) == 4 || tag == 0) {
         break
       }
-      const startPos = reader.pos
       reader.skipType(tag & 7)
-      const buf = reader.buf.slice(startPos, reader.pos)
-      const list = (message as any)._unknownFields[tag]
-
-      if (list === undefined) {
-        ;(message as any)._unknownFields[tag] = [buf]
-      } else {
-        list.push(buf)
-      }
     }
     return message
   },
@@ -369,20 +312,6 @@ export const AbortQuestRequest = {
     if (message.questInstanceId !== "") {
       writer.uint32(18).string(message.questInstanceId)
     }
-    if ("_unknownFields" in message) {
-      const msgUnknownFields: any = (message as any)["_unknownFields"]
-      for (const key of Object.keys(msgUnknownFields)) {
-        const values = msgUnknownFields[key] as Uint8Array[]
-        for (const value of values) {
-          writer.uint32(parseInt(key, 10))
-          ;(writer as any)["_push"](
-            (val: Uint8Array, buf: Buffer, pos: number) => buf.set(val, pos),
-            value.length,
-            value
-          )
-        }
-      }
-    }
     return writer
   },
 
@@ -390,7 +319,6 @@ export const AbortQuestRequest = {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseAbortQuestRequest()
-    ;(message as any)._unknownFields = {}
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
@@ -412,16 +340,7 @@ export const AbortQuestRequest = {
       if ((tag & 7) == 4 || tag == 0) {
         break
       }
-      const startPos = reader.pos
       reader.skipType(tag & 7)
-      const buf = reader.buf.slice(startPos, reader.pos)
-      const list = (message as any)._unknownFields[tag]
-
-      if (list === undefined) {
-        ;(message as any)._unknownFields[tag] = [buf]
-      } else {
-        list.push(buf)
-      }
     }
     return message
   },
@@ -461,20 +380,6 @@ export const AbortQuestResponse = {
     if (message.accepted === true) {
       writer.uint32(8).bool(message.accepted)
     }
-    if ("_unknownFields" in message) {
-      const msgUnknownFields: any = (message as any)["_unknownFields"]
-      for (const key of Object.keys(msgUnknownFields)) {
-        const values = msgUnknownFields[key] as Uint8Array[]
-        for (const value of values) {
-          writer.uint32(parseInt(key, 10))
-          ;(writer as any)["_push"](
-            (val: Uint8Array, buf: Buffer, pos: number) => buf.set(val, pos),
-            value.length,
-            value
-          )
-        }
-      }
-    }
     return writer
   },
 
@@ -482,7 +387,6 @@ export const AbortQuestResponse = {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseAbortQuestResponse()
-    ;(message as any)._unknownFields = {}
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
@@ -497,16 +401,7 @@ export const AbortQuestResponse = {
       if ((tag & 7) == 4 || tag == 0) {
         break
       }
-      const startPos = reader.pos
       reader.skipType(tag & 7)
-      const buf = reader.buf.slice(startPos, reader.pos)
-      const list = (message as any)._unknownFields[tag]
-
-      if (list === undefined) {
-        ;(message as any)._unknownFields[tag] = [buf]
-      } else {
-        list.push(buf)
-      }
     }
     return message
   },
@@ -533,30 +428,16 @@ export const AbortQuestResponse = {
 }
 
 function createBaseEvent(): Event {
-  return { userAddress: "", action: undefined }
+  return { address: "", action: undefined }
 }
 
 export const Event = {
   encode(message: Event, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.userAddress !== "") {
-      writer.uint32(10).string(message.userAddress)
+    if (message.address !== "") {
+      writer.uint32(10).string(message.address)
     }
     if (message.action !== undefined) {
       Action.encode(message.action, writer.uint32(18).fork()).ldelim()
-    }
-    if ("_unknownFields" in message) {
-      const msgUnknownFields: any = (message as any)["_unknownFields"]
-      for (const key of Object.keys(msgUnknownFields)) {
-        const values = msgUnknownFields[key] as Uint8Array[]
-        for (const value of values) {
-          writer.uint32(parseInt(key, 10))
-          ;(writer as any)["_push"](
-            (val: Uint8Array, buf: Buffer, pos: number) => buf.set(val, pos),
-            value.length,
-            value
-          )
-        }
-      }
     }
     return writer
   },
@@ -565,7 +446,6 @@ export const Event = {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseEvent()
-    ;(message as any)._unknownFields = {}
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
@@ -574,7 +454,7 @@ export const Event = {
             break
           }
 
-          message.userAddress = reader.string()
+          message.address = reader.string()
           continue
         case 2:
           if (tag != 18) {
@@ -587,30 +467,21 @@ export const Event = {
       if ((tag & 7) == 4 || tag == 0) {
         break
       }
-      const startPos = reader.pos
       reader.skipType(tag & 7)
-      const buf = reader.buf.slice(startPos, reader.pos)
-      const list = (message as any)._unknownFields[tag]
-
-      if (list === undefined) {
-        ;(message as any)._unknownFields[tag] = [buf]
-      } else {
-        list.push(buf)
-      }
     }
     return message
   },
 
   fromJSON(object: any): Event {
     return {
-      userAddress: isSet(object.userAddress) ? String(object.userAddress) : "",
+      address: isSet(object.address) ? String(object.address) : "",
       action: isSet(object.action) ? Action.fromJSON(object.action) : undefined,
     }
   },
 
   toJSON(message: Event): unknown {
     const obj: any = {}
-    message.userAddress !== undefined && (obj.userAddress = message.userAddress)
+    message.address !== undefined && (obj.address = message.address)
     message.action !== undefined && (obj.action = message.action ? Action.toJSON(message.action) : undefined)
     return obj
   },
@@ -621,7 +492,7 @@ export const Event = {
 
   fromPartial<I extends Exact<DeepPartial<Event>, I>>(object: I): Event {
     const message = createBaseEvent()
-    message.userAddress = object.userAddress ?? ""
+    message.address = object.address ?? ""
     message.action =
       object.action !== undefined && object.action !== null ? Action.fromPartial(object.action) : undefined
     return message
@@ -640,20 +511,6 @@ export const EventResponse = {
     if (message.accepted === true) {
       writer.uint32(16).bool(message.accepted)
     }
-    if ("_unknownFields" in message) {
-      const msgUnknownFields: any = (message as any)["_unknownFields"]
-      for (const key of Object.keys(msgUnknownFields)) {
-        const values = msgUnknownFields[key] as Uint8Array[]
-        for (const value of values) {
-          writer.uint32(parseInt(key, 10))
-          ;(writer as any)["_push"](
-            (val: Uint8Array, buf: Buffer, pos: number) => buf.set(val, pos),
-            value.length,
-            value
-          )
-        }
-      }
-    }
     return writer
   },
 
@@ -661,7 +518,6 @@ export const EventResponse = {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseEventResponse()
-    ;(message as any)._unknownFields = {}
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
@@ -683,16 +539,7 @@ export const EventResponse = {
       if ((tag & 7) == 4 || tag == 0) {
         break
       }
-      const startPos = reader.pos
       reader.skipType(tag & 7)
-      const buf = reader.buf.slice(startPos, reader.pos)
-      const list = (message as any)._unknownFields[tag]
-
-      if (list === undefined) {
-        ;(message as any)._unknownFields[tag] = [buf]
-      } else {
-        list.push(buf)
-      }
     }
     return message
   },
@@ -723,6 +570,257 @@ export const EventResponse = {
   },
 }
 
+function createBaseQuestDefinition(): QuestDefinition {
+  return { steps: [], connections: [] }
+}
+
+export const QuestDefinition = {
+  encode(message: QuestDefinition, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.steps) {
+      Step.encode(v!, writer.uint32(10).fork()).ldelim()
+    }
+    for (const v of message.connections) {
+      Connection.encode(v!, writer.uint32(18).fork()).ldelim()
+    }
+    return writer
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): QuestDefinition {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
+    let end = length === undefined ? reader.len : reader.pos + length
+    const message = createBaseQuestDefinition()
+    while (reader.pos < end) {
+      const tag = reader.uint32()
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break
+          }
+
+          message.steps.push(Step.decode(reader, reader.uint32()))
+          continue
+        case 2:
+          if (tag != 18) {
+            break
+          }
+
+          message.connections.push(Connection.decode(reader, reader.uint32()))
+          continue
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break
+      }
+      reader.skipType(tag & 7)
+    }
+    return message
+  },
+
+  fromJSON(object: any): QuestDefinition {
+    return {
+      steps: Array.isArray(object?.steps) ? object.steps.map((e: any) => Step.fromJSON(e)) : [],
+      connections: Array.isArray(object?.connections) ? object.connections.map((e: any) => Connection.fromJSON(e)) : [],
+    }
+  },
+
+  toJSON(message: QuestDefinition): unknown {
+    const obj: any = {}
+    if (message.steps) {
+      obj.steps = message.steps.map((e) => (e ? Step.toJSON(e) : undefined))
+    } else {
+      obj.steps = []
+    }
+    if (message.connections) {
+      obj.connections = message.connections.map((e) => (e ? Connection.toJSON(e) : undefined))
+    } else {
+      obj.connections = []
+    }
+    return obj
+  },
+
+  create<I extends Exact<DeepPartial<QuestDefinition>, I>>(base?: I): QuestDefinition {
+    return QuestDefinition.fromPartial(base ?? {})
+  },
+
+  fromPartial<I extends Exact<DeepPartial<QuestDefinition>, I>>(object: I): QuestDefinition {
+    const message = createBaseQuestDefinition()
+    message.steps = object.steps?.map((e) => Step.fromPartial(e)) || []
+    message.connections = object.connections?.map((e) => Connection.fromPartial(e)) || []
+    return message
+  },
+}
+
+function createBaseConnection(): Connection {
+  return { stepFrom: "", stepTo: "" }
+}
+
+export const Connection = {
+  encode(message: Connection, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.stepFrom !== "") {
+      writer.uint32(10).string(message.stepFrom)
+    }
+    if (message.stepTo !== "") {
+      writer.uint32(18).string(message.stepTo)
+    }
+    return writer
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): Connection {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
+    let end = length === undefined ? reader.len : reader.pos + length
+    const message = createBaseConnection()
+    while (reader.pos < end) {
+      const tag = reader.uint32()
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break
+          }
+
+          message.stepFrom = reader.string()
+          continue
+        case 2:
+          if (tag != 18) {
+            break
+          }
+
+          message.stepTo = reader.string()
+          continue
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break
+      }
+      reader.skipType(tag & 7)
+    }
+    return message
+  },
+
+  fromJSON(object: any): Connection {
+    return {
+      stepFrom: isSet(object.stepFrom) ? String(object.stepFrom) : "",
+      stepTo: isSet(object.stepTo) ? String(object.stepTo) : "",
+    }
+  },
+
+  toJSON(message: Connection): unknown {
+    const obj: any = {}
+    message.stepFrom !== undefined && (obj.stepFrom = message.stepFrom)
+    message.stepTo !== undefined && (obj.stepTo = message.stepTo)
+    return obj
+  },
+
+  create<I extends Exact<DeepPartial<Connection>, I>>(base?: I): Connection {
+    return Connection.fromPartial(base ?? {})
+  },
+
+  fromPartial<I extends Exact<DeepPartial<Connection>, I>>(object: I): Connection {
+    const message = createBaseConnection()
+    message.stepFrom = object.stepFrom ?? ""
+    message.stepTo = object.stepTo ?? ""
+    return message
+  },
+}
+
+function createBaseStep(): Step {
+  return { id: "", description: "", tasks: [], onCompleteHook: undefined }
+}
+
+export const Step = {
+  encode(message: Step, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.id !== "") {
+      writer.uint32(10).string(message.id)
+    }
+    if (message.description !== "") {
+      writer.uint32(18).string(message.description)
+    }
+    for (const v of message.tasks) {
+      Task.encode(v!, writer.uint32(26).fork()).ldelim()
+    }
+    if (message.onCompleteHook !== undefined) {
+      writer.uint32(34).string(message.onCompleteHook)
+    }
+    return writer
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): Step {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
+    let end = length === undefined ? reader.len : reader.pos + length
+    const message = createBaseStep()
+    while (reader.pos < end) {
+      const tag = reader.uint32()
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break
+          }
+
+          message.id = reader.string()
+          continue
+        case 2:
+          if (tag != 18) {
+            break
+          }
+
+          message.description = reader.string()
+          continue
+        case 3:
+          if (tag != 26) {
+            break
+          }
+
+          message.tasks.push(Task.decode(reader, reader.uint32()))
+          continue
+        case 4:
+          if (tag != 34) {
+            break
+          }
+
+          message.onCompleteHook = reader.string()
+          continue
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break
+      }
+      reader.skipType(tag & 7)
+    }
+    return message
+  },
+
+  fromJSON(object: any): Step {
+    return {
+      id: isSet(object.id) ? String(object.id) : "",
+      description: isSet(object.description) ? String(object.description) : "",
+      tasks: Array.isArray(object?.tasks) ? object.tasks.map((e: any) => Task.fromJSON(e)) : [],
+      onCompleteHook: isSet(object.onCompleteHook) ? String(object.onCompleteHook) : undefined,
+    }
+  },
+
+  toJSON(message: Step): unknown {
+    const obj: any = {}
+    message.id !== undefined && (obj.id = message.id)
+    message.description !== undefined && (obj.description = message.description)
+    if (message.tasks) {
+      obj.tasks = message.tasks.map((e) => (e ? Task.toJSON(e) : undefined))
+    } else {
+      obj.tasks = []
+    }
+    message.onCompleteHook !== undefined && (obj.onCompleteHook = message.onCompleteHook)
+    return obj
+  },
+
+  create<I extends Exact<DeepPartial<Step>, I>>(base?: I): Step {
+    return Step.fromPartial(base ?? {})
+  },
+
+  fromPartial<I extends Exact<DeepPartial<Step>, I>>(object: I): Step {
+    const message = createBaseStep()
+    message.id = object.id ?? ""
+    message.description = object.description ?? ""
+    message.tasks = object.tasks?.map((e) => Task.fromPartial(e)) || []
+    message.onCompleteHook = object.onCompleteHook ?? undefined
+    return message
+  },
+}
+
 function createBaseAction(): Action {
   return { type: "", parameters: {} }
 }
@@ -735,20 +833,6 @@ export const Action = {
     Object.entries(message.parameters).forEach(([key, value]) => {
       Action_ParametersEntry.encode({ key: key as any, value }, writer.uint32(18).fork()).ldelim()
     })
-    if ("_unknownFields" in message) {
-      const msgUnknownFields: any = (message as any)["_unknownFields"]
-      for (const key of Object.keys(msgUnknownFields)) {
-        const values = msgUnknownFields[key] as Uint8Array[]
-        for (const value of values) {
-          writer.uint32(parseInt(key, 10))
-          ;(writer as any)["_push"](
-            (val: Uint8Array, buf: Buffer, pos: number) => buf.set(val, pos),
-            value.length,
-            value
-          )
-        }
-      }
-    }
     return writer
   },
 
@@ -756,7 +840,6 @@ export const Action = {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseAction()
-    ;(message as any)._unknownFields = {}
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
@@ -781,16 +864,7 @@ export const Action = {
       if ((tag & 7) == 4 || tag == 0) {
         break
       }
-      const startPos = reader.pos
       reader.skipType(tag & 7)
-      const buf = reader.buf.slice(startPos, reader.pos)
-      const list = (message as any)._unknownFields[tag]
-
-      if (list === undefined) {
-        ;(message as any)._unknownFields[tag] = [buf]
-      } else {
-        list.push(buf)
-      }
     }
     return message
   },
@@ -851,20 +925,6 @@ export const Action_ParametersEntry = {
     if (message.value !== "") {
       writer.uint32(18).string(message.value)
     }
-    if ("_unknownFields" in message) {
-      const msgUnknownFields: any = (message as any)["_unknownFields"]
-      for (const key of Object.keys(msgUnknownFields)) {
-        const values = msgUnknownFields[key] as Uint8Array[]
-        for (const value of values) {
-          writer.uint32(parseInt(key, 10))
-          ;(writer as any)["_push"](
-            (val: Uint8Array, buf: Buffer, pos: number) => buf.set(val, pos),
-            value.length,
-            value
-          )
-        }
-      }
-    }
     return writer
   },
 
@@ -872,7 +932,6 @@ export const Action_ParametersEntry = {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseAction_ParametersEntry()
-    ;(message as any)._unknownFields = {}
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
@@ -894,16 +953,7 @@ export const Action_ParametersEntry = {
       if ((tag & 7) == 4 || tag == 0) {
         break
       }
-      const startPos = reader.pos
       reader.skipType(tag & 7)
-      const buf = reader.buf.slice(startPos, reader.pos)
-      const list = (message as any)._unknownFields[tag]
-
-      if (list === undefined) {
-        ;(message as any)._unknownFields[tag] = [buf]
-      } else {
-        list.push(buf)
-      }
     }
     return message
   },
@@ -946,20 +996,6 @@ export const Task = {
     for (const v of message.actionItems) {
       Action.encode(v!, writer.uint32(26).fork()).ldelim()
     }
-    if ("_unknownFields" in message) {
-      const msgUnknownFields: any = (message as any)["_unknownFields"]
-      for (const key of Object.keys(msgUnknownFields)) {
-        const values = msgUnknownFields[key] as Uint8Array[]
-        for (const value of values) {
-          writer.uint32(parseInt(key, 10))
-          ;(writer as any)["_push"](
-            (val: Uint8Array, buf: Buffer, pos: number) => buf.set(val, pos),
-            value.length,
-            value
-          )
-        }
-      }
-    }
     return writer
   },
 
@@ -967,7 +1003,6 @@ export const Task = {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseTask()
-    ;(message as any)._unknownFields = {}
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
@@ -996,16 +1031,7 @@ export const Task = {
       if ((tag & 7) == 4 || tag == 0) {
         break
       }
-      const startPos = reader.pos
       reader.skipType(tag & 7)
-      const buf = reader.buf.slice(startPos, reader.pos)
-      const list = (message as any)._unknownFields[tag]
-
-      if (list === undefined) {
-        ;(message as any)._unknownFields[tag] = [buf]
-      } else {
-        list.push(buf)
-      }
     }
     return message
   },
@@ -1044,7 +1070,7 @@ export const Task = {
 }
 
 function createBaseStepContent(): StepContent {
-  return { toDos: [], taskCompleted: [] }
+  return { toDos: [], tasksCompleted: [] }
 }
 
 export const StepContent = {
@@ -1052,22 +1078,8 @@ export const StepContent = {
     for (const v of message.toDos) {
       Task.encode(v!, writer.uint32(10).fork()).ldelim()
     }
-    for (const v of message.taskCompleted) {
+    for (const v of message.tasksCompleted) {
       writer.uint32(18).string(v!)
-    }
-    if ("_unknownFields" in message) {
-      const msgUnknownFields: any = (message as any)["_unknownFields"]
-      for (const key of Object.keys(msgUnknownFields)) {
-        const values = msgUnknownFields[key] as Uint8Array[]
-        for (const value of values) {
-          writer.uint32(parseInt(key, 10))
-          ;(writer as any)["_push"](
-            (val: Uint8Array, buf: Buffer, pos: number) => buf.set(val, pos),
-            value.length,
-            value
-          )
-        }
-      }
     }
     return writer
   },
@@ -1076,7 +1088,6 @@ export const StepContent = {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseStepContent()
-    ;(message as any)._unknownFields = {}
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
@@ -1092,22 +1103,13 @@ export const StepContent = {
             break
           }
 
-          message.taskCompleted.push(reader.string())
+          message.tasksCompleted.push(reader.string())
           continue
       }
       if ((tag & 7) == 4 || tag == 0) {
         break
       }
-      const startPos = reader.pos
       reader.skipType(tag & 7)
-      const buf = reader.buf.slice(startPos, reader.pos)
-      const list = (message as any)._unknownFields[tag]
-
-      if (list === undefined) {
-        ;(message as any)._unknownFields[tag] = [buf]
-      } else {
-        list.push(buf)
-      }
     }
     return message
   },
@@ -1115,7 +1117,7 @@ export const StepContent = {
   fromJSON(object: any): StepContent {
     return {
       toDos: Array.isArray(object?.toDos) ? object.toDos.map((e: any) => Task.fromJSON(e)) : [],
-      taskCompleted: Array.isArray(object?.taskCompleted) ? object.taskCompleted.map((e: any) => String(e)) : [],
+      tasksCompleted: Array.isArray(object?.tasksCompleted) ? object.tasksCompleted.map((e: any) => String(e)) : [],
     }
   },
 
@@ -1126,10 +1128,10 @@ export const StepContent = {
     } else {
       obj.toDos = []
     }
-    if (message.taskCompleted) {
-      obj.taskCompleted = message.taskCompleted.map((e) => e)
+    if (message.tasksCompleted) {
+      obj.tasksCompleted = message.tasksCompleted.map((e) => e)
     } else {
-      obj.taskCompleted = []
+      obj.tasksCompleted = []
     }
     return obj
   },
@@ -1141,20 +1143,17 @@ export const StepContent = {
   fromPartial<I extends Exact<DeepPartial<StepContent>, I>>(object: I): StepContent {
     const message = createBaseStepContent()
     message.toDos = object.toDos?.map((e) => Task.fromPartial(e)) || []
-    message.taskCompleted = object.taskCompleted?.map((e) => e) || []
+    message.tasksCompleted = object.tasksCompleted?.map((e) => e) || []
     return message
   },
 }
 
 function createBaseQuestState(): QuestState {
-  return { questInstanceId: "", currentSteps: {}, stepsLeft: 0, stepsCompleted: [], requiredSteps: [] }
+  return { currentSteps: {}, stepsLeft: 0, stepsCompleted: [], requiredSteps: [] }
 }
 
 export const QuestState = {
   encode(message: QuestState, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.questInstanceId !== "") {
-      writer.uint32(10).string(message.questInstanceId)
-    }
     Object.entries(message.currentSteps).forEach(([key, value]) => {
       QuestState_CurrentStepsEntry.encode({ key: key as any, value }, writer.uint32(18).fork()).ldelim()
     })
@@ -1167,20 +1166,6 @@ export const QuestState = {
     for (const v of message.requiredSteps) {
       writer.uint32(42).string(v!)
     }
-    if ("_unknownFields" in message) {
-      const msgUnknownFields: any = (message as any)["_unknownFields"]
-      for (const key of Object.keys(msgUnknownFields)) {
-        const values = msgUnknownFields[key] as Uint8Array[]
-        for (const value of values) {
-          writer.uint32(parseInt(key, 10))
-          ;(writer as any)["_push"](
-            (val: Uint8Array, buf: Buffer, pos: number) => buf.set(val, pos),
-            value.length,
-            value
-          )
-        }
-      }
-    }
     return writer
   },
 
@@ -1188,17 +1173,9 @@ export const QuestState = {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseQuestState()
-    ;(message as any)._unknownFields = {}
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break
-          }
-
-          message.questInstanceId = reader.string()
-          continue
         case 2:
           if (tag != 18) {
             break
@@ -1234,23 +1211,13 @@ export const QuestState = {
       if ((tag & 7) == 4 || tag == 0) {
         break
       }
-      const startPos = reader.pos
       reader.skipType(tag & 7)
-      const buf = reader.buf.slice(startPos, reader.pos)
-      const list = (message as any)._unknownFields[tag]
-
-      if (list === undefined) {
-        ;(message as any)._unknownFields[tag] = [buf]
-      } else {
-        list.push(buf)
-      }
     }
     return message
   },
 
   fromJSON(object: any): QuestState {
     return {
-      questInstanceId: isSet(object.questInstanceId) ? String(object.questInstanceId) : "",
       currentSteps: isObject(object.currentSteps)
         ? Object.entries(object.currentSteps).reduce<{ [key: string]: StepContent }>((acc, [key, value]) => {
             acc[key] = StepContent.fromJSON(value)
@@ -1265,7 +1232,6 @@ export const QuestState = {
 
   toJSON(message: QuestState): unknown {
     const obj: any = {}
-    message.questInstanceId !== undefined && (obj.questInstanceId = message.questInstanceId)
     obj.currentSteps = {}
     if (message.currentSteps) {
       Object.entries(message.currentSteps).forEach(([k, v]) => {
@@ -1292,7 +1258,6 @@ export const QuestState = {
 
   fromPartial<I extends Exact<DeepPartial<QuestState>, I>>(object: I): QuestState {
     const message = createBaseQuestState()
-    message.questInstanceId = object.questInstanceId ?? ""
     message.currentSteps = Object.entries(object.currentSteps ?? {}).reduce<{ [key: string]: StepContent }>(
       (acc, [key, value]) => {
         if (value !== undefined) {
@@ -1321,20 +1286,6 @@ export const QuestState_CurrentStepsEntry = {
     if (message.value !== undefined) {
       StepContent.encode(message.value, writer.uint32(18).fork()).ldelim()
     }
-    if ("_unknownFields" in message) {
-      const msgUnknownFields: any = (message as any)["_unknownFields"]
-      for (const key of Object.keys(msgUnknownFields)) {
-        const values = msgUnknownFields[key] as Uint8Array[]
-        for (const value of values) {
-          writer.uint32(parseInt(key, 10))
-          ;(writer as any)["_push"](
-            (val: Uint8Array, buf: Buffer, pos: number) => buf.set(val, pos),
-            value.length,
-            value
-          )
-        }
-      }
-    }
     return writer
   },
 
@@ -1342,7 +1293,6 @@ export const QuestState_CurrentStepsEntry = {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseQuestState_CurrentStepsEntry()
-    ;(message as any)._unknownFields = {}
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
@@ -1364,16 +1314,7 @@ export const QuestState_CurrentStepsEntry = {
       if ((tag & 7) == 4 || tag == 0) {
         break
       }
-      const startPos = reader.pos
       reader.skipType(tag & 7)
-      const buf = reader.buf.slice(startPos, reader.pos)
-      const list = (message as any)._unknownFields[tag]
-
-      if (list === undefined) {
-        ;(message as any)._unknownFields[tag] = [buf]
-      } else {
-        list.push(buf)
-      }
     }
     return message
   },
@@ -1405,40 +1346,25 @@ export const QuestState_CurrentStepsEntry = {
   },
 }
 
-function createBaseUserUpdate(): UserUpdate {
-  return { questState: undefined, eventIgnored: undefined }
+function createBaseQuestStateUpdate(): QuestStateUpdate {
+  return { questInstanceId: "", questState: undefined }
 }
 
-export const UserUpdate = {
-  encode(message: UserUpdate, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+export const QuestStateUpdate = {
+  encode(message: QuestStateUpdate, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.questInstanceId !== "") {
+      writer.uint32(10).string(message.questInstanceId)
+    }
     if (message.questState !== undefined) {
-      QuestState.encode(message.questState, writer.uint32(10).fork()).ldelim()
-    }
-    if (message.eventIgnored !== undefined) {
-      writer.uint32(21).fixed32(message.eventIgnored)
-    }
-    if ("_unknownFields" in message) {
-      const msgUnknownFields: any = (message as any)["_unknownFields"]
-      for (const key of Object.keys(msgUnknownFields)) {
-        const values = msgUnknownFields[key] as Uint8Array[]
-        for (const value of values) {
-          writer.uint32(parseInt(key, 10))
-          ;(writer as any)["_push"](
-            (val: Uint8Array, buf: Buffer, pos: number) => buf.set(val, pos),
-            value.length,
-            value
-          )
-        }
-      }
+      QuestState.encode(message.questState, writer.uint32(18).fork()).ldelim()
     }
     return writer
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): UserUpdate {
+  decode(input: _m0.Reader | Uint8Array, length?: number): QuestStateUpdate {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
     let end = length === undefined ? reader.len : reader.pos + length
-    const message = createBaseUserUpdate()
-    ;(message as any)._unknownFields = {}
+    const message = createBaseQuestStateUpdate()
     while (reader.pos < end) {
       const tag = reader.uint32()
       switch (tag >>> 3) {
@@ -1447,7 +1373,82 @@ export const UserUpdate = {
             break
           }
 
+          message.questInstanceId = reader.string()
+          continue
+        case 2:
+          if (tag != 18) {
+            break
+          }
+
           message.questState = QuestState.decode(reader, reader.uint32())
+          continue
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break
+      }
+      reader.skipType(tag & 7)
+    }
+    return message
+  },
+
+  fromJSON(object: any): QuestStateUpdate {
+    return {
+      questInstanceId: isSet(object.questInstanceId) ? String(object.questInstanceId) : "",
+      questState: isSet(object.questState) ? QuestState.fromJSON(object.questState) : undefined,
+    }
+  },
+
+  toJSON(message: QuestStateUpdate): unknown {
+    const obj: any = {}
+    message.questInstanceId !== undefined && (obj.questInstanceId = message.questInstanceId)
+    message.questState !== undefined &&
+      (obj.questState = message.questState ? QuestState.toJSON(message.questState) : undefined)
+    return obj
+  },
+
+  create<I extends Exact<DeepPartial<QuestStateUpdate>, I>>(base?: I): QuestStateUpdate {
+    return QuestStateUpdate.fromPartial(base ?? {})
+  },
+
+  fromPartial<I extends Exact<DeepPartial<QuestStateUpdate>, I>>(object: I): QuestStateUpdate {
+    const message = createBaseQuestStateUpdate()
+    message.questInstanceId = object.questInstanceId ?? ""
+    message.questState =
+      object.questState !== undefined && object.questState !== null
+        ? QuestState.fromPartial(object.questState)
+        : undefined
+    return message
+  },
+}
+
+function createBaseUserUpdate(): UserUpdate {
+  return { questState: undefined, eventIgnored: undefined }
+}
+
+export const UserUpdate = {
+  encode(message: UserUpdate, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.questState !== undefined) {
+      QuestStateUpdate.encode(message.questState, writer.uint32(10).fork()).ldelim()
+    }
+    if (message.eventIgnored !== undefined) {
+      writer.uint32(21).fixed32(message.eventIgnored)
+    }
+    return writer
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): UserUpdate {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input)
+    let end = length === undefined ? reader.len : reader.pos + length
+    const message = createBaseUserUpdate()
+    while (reader.pos < end) {
+      const tag = reader.uint32()
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break
+          }
+
+          message.questState = QuestStateUpdate.decode(reader, reader.uint32())
           continue
         case 2:
           if (tag != 21) {
@@ -1460,23 +1461,14 @@ export const UserUpdate = {
       if ((tag & 7) == 4 || tag == 0) {
         break
       }
-      const startPos = reader.pos
       reader.skipType(tag & 7)
-      const buf = reader.buf.slice(startPos, reader.pos)
-      const list = (message as any)._unknownFields[tag]
-
-      if (list === undefined) {
-        ;(message as any)._unknownFields[tag] = [buf]
-      } else {
-        list.push(buf)
-      }
     }
     return message
   },
 
   fromJSON(object: any): UserUpdate {
     return {
-      questState: isSet(object.questState) ? QuestState.fromJSON(object.questState) : undefined,
+      questState: isSet(object.questState) ? QuestStateUpdate.fromJSON(object.questState) : undefined,
       eventIgnored: isSet(object.eventIgnored) ? Number(object.eventIgnored) : undefined,
     }
   },
@@ -1484,7 +1476,7 @@ export const UserUpdate = {
   toJSON(message: UserUpdate): unknown {
     const obj: any = {}
     message.questState !== undefined &&
-      (obj.questState = message.questState ? QuestState.toJSON(message.questState) : undefined)
+      (obj.questState = message.questState ? QuestStateUpdate.toJSON(message.questState) : undefined)
     message.eventIgnored !== undefined && (obj.eventIgnored = Math.round(message.eventIgnored))
     return obj
   },
@@ -1497,7 +1489,7 @@ export const UserUpdate = {
     const message = createBaseUserUpdate()
     message.questState =
       object.questState !== undefined && object.questState !== null
-        ? QuestState.fromPartial(object.questState)
+        ? QuestStateUpdate.fromPartial(object.questState)
         : undefined
     message.eventIgnored = object.eventIgnored ?? undefined
     return message
@@ -1537,7 +1529,7 @@ export const QuestsServiceDefinition = {
     /** Listen to changes in quest states and event processing updates */
     subscribe: {
       name: "Subscribe",
-      requestType: User,
+      requestType: UserAddress,
       requestStream: false,
       responseType: UserUpdate,
       responseStream: true,
