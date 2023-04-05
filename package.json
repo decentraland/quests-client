@@ -22,6 +22,7 @@
   "homepage": "https://github.com/decentraland/quests#readme",
   "devDependencies": {
     "@microsoft/api-extractor": "7.34.4",
+    "@types/deep-equal": "^1.0.1",
     "@types/jest": "^28.1.0",
     "jest": "^28.1.0",
     "ts-jest": "^28.0.4",
@@ -32,6 +33,7 @@
   ],
   "dependencies": {
     "@dcl/rpc": "^1.1.1",
-    "@types/ws": "^8.5.4"
+    "@types/ws": "^8.5.4",
+    "deep-equal": "^2.2.0"
   }
 }

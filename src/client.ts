@@ -4,6 +4,7 @@ import { Action, QuestsServiceDefinition, QuestState } from "./quests"
 import { createRpcClient, RpcClient } from "@dcl/rpc"
 import { WebSocketTransport } from "@dcl/rpc/dist/transports/WebSocket"
 import { StartClient, StateUpdateCallback } from "./types"
+import deepEqual from "deep-equal"
 
 type ClientState = {
   questStates: Record<string, QuestState>
@@ -63,7 +64,7 @@ export async function createQuestsClient(ws: string): Promise<StartClient> {
           const someQuestExpectsAction = () =>
             Object.values(state.questStates).some((questState) =>
               Object.values(questState.currentSteps).some((step) =>
-                step.toDos.some((task) => task.actionItems.some((action_item) => action_item === action))
+                step.toDos.some((task) => task.actionItems.some((action_item) => checkSameAction(action_item, action)))
               )
             )
 
@@ -81,6 +82,9 @@ export async function createQuestsClient(ws: string): Promise<StartClient> {
         },
       }
     },
+  }
+  function checkSameAction(action_item: Action, action: Action): boolean {
+    return deepEqual(action_item, action)
   }
 }
 

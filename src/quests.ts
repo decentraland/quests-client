@@ -92,7 +92,7 @@ export interface Task {
 
 export interface StepContent {
   toDos: Task[]
-  tasksCompleted: string[]
+  tasksCompleted: Task[]
 }
 
 export interface QuestState {
@@ -109,6 +109,8 @@ export interface QuestState_CurrentStepsEntry {
 
 export interface QuestStateUpdate {
   questInstanceId: string
+  name: string
+  description: string
   questState: QuestState | undefined
 }
 
@@ -874,9 +876,9 @@ export const Action = {
       type: isSet(object.type) ? String(object.type) : "",
       parameters: isObject(object.parameters)
         ? Object.entries(object.parameters).reduce<{ [key: string]: string }>((acc, [key, value]) => {
-            acc[key] = String(value)
-            return acc
-          }, {})
+          acc[key] = String(value)
+          return acc
+        }, {})
         : {},
     }
   },
@@ -1079,7 +1081,7 @@ export const StepContent = {
       Task.encode(v!, writer.uint32(10).fork()).ldelim()
     }
     for (const v of message.tasksCompleted) {
-      writer.uint32(18).string(v!)
+      Task.encode(v!, writer.uint32(18).fork()).ldelim()
     }
     return writer
   },
@@ -1103,7 +1105,7 @@ export const StepContent = {
             break
           }
 
-          message.tasksCompleted.push(reader.string())
+          message.tasksCompleted.push(Task.decode(reader, reader.uint32()))
           continue
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -1117,7 +1119,9 @@ export const StepContent = {
   fromJSON(object: any): StepContent {
     return {
       toDos: Array.isArray(object?.toDos) ? object.toDos.map((e: any) => Task.fromJSON(e)) : [],
-      tasksCompleted: Array.isArray(object?.tasksCompleted) ? object.tasksCompleted.map((e: any) => String(e)) : [],
+      tasksCompleted: Array.isArray(object?.tasksCompleted)
+        ? object.tasksCompleted.map((e: any) => Task.fromJSON(e))
+        : [],
     }
   },
 
@@ -1129,7 +1133,7 @@ export const StepContent = {
       obj.toDos = []
     }
     if (message.tasksCompleted) {
-      obj.tasksCompleted = message.tasksCompleted.map((e) => e)
+      obj.tasksCompleted = message.tasksCompleted.map((e) => (e ? Task.toJSON(e) : undefined))
     } else {
       obj.tasksCompleted = []
     }
@@ -1143,7 +1147,7 @@ export const StepContent = {
   fromPartial<I extends Exact<DeepPartial<StepContent>, I>>(object: I): StepContent {
     const message = createBaseStepContent()
     message.toDos = object.toDos?.map((e) => Task.fromPartial(e)) || []
-    message.tasksCompleted = object.tasksCompleted?.map((e) => e) || []
+    message.tasksCompleted = object.tasksCompleted?.map((e) => Task.fromPartial(e)) || []
     return message
   },
 }
@@ -1220,9 +1224,9 @@ export const QuestState = {
     return {
       currentSteps: isObject(object.currentSteps)
         ? Object.entries(object.currentSteps).reduce<{ [key: string]: StepContent }>((acc, [key, value]) => {
-            acc[key] = StepContent.fromJSON(value)
-            return acc
-          }, {})
+          acc[key] = StepContent.fromJSON(value)
+          return acc
+        }, {})
         : {},
       stepsLeft: isSet(object.stepsLeft) ? Number(object.stepsLeft) : 0,
       stepsCompleted: Array.isArray(object?.stepsCompleted) ? object.stepsCompleted.map((e: any) => String(e)) : [],
@@ -1347,7 +1351,7 @@ export const QuestState_CurrentStepsEntry = {
 }
 
 function createBaseQuestStateUpdate(): QuestStateUpdate {
-  return { questInstanceId: "", questState: undefined }
+  return { questInstanceId: "", name: "", description: "", questState: undefined }
 }
 
 export const QuestStateUpdate = {
@@ -1355,8 +1359,14 @@ export const QuestStateUpdate = {
     if (message.questInstanceId !== "") {
       writer.uint32(10).string(message.questInstanceId)
     }
+    if (message.name !== "") {
+      writer.uint32(18).string(message.name)
+    }
+    if (message.description !== "") {
+      writer.uint32(26).string(message.description)
+    }
     if (message.questState !== undefined) {
-      QuestState.encode(message.questState, writer.uint32(18).fork()).ldelim()
+      QuestState.encode(message.questState, writer.uint32(34).fork()).ldelim()
     }
     return writer
   },
@@ -1380,6 +1390,20 @@ export const QuestStateUpdate = {
             break
           }
 
+          message.name = reader.string()
+          continue
+        case 3:
+          if (tag != 26) {
+            break
+          }
+
+          message.description = reader.string()
+          continue
+        case 4:
+          if (tag != 34) {
+            break
+          }
+
           message.questState = QuestState.decode(reader, reader.uint32())
           continue
       }
@@ -1394,6 +1418,8 @@ export const QuestStateUpdate = {
   fromJSON(object: any): QuestStateUpdate {
     return {
       questInstanceId: isSet(object.questInstanceId) ? String(object.questInstanceId) : "",
+      name: isSet(object.name) ? String(object.name) : "",
+      description: isSet(object.description) ? String(object.description) : "",
       questState: isSet(object.questState) ? QuestState.fromJSON(object.questState) : undefined,
     }
   },
@@ -1401,6 +1427,8 @@ export const QuestStateUpdate = {
   toJSON(message: QuestStateUpdate): unknown {
     const obj: any = {}
     message.questInstanceId !== undefined && (obj.questInstanceId = message.questInstanceId)
+    message.name !== undefined && (obj.name = message.name)
+    message.description !== undefined && (obj.description = message.description)
     message.questState !== undefined &&
       (obj.questState = message.questState ? QuestState.toJSON(message.questState) : undefined)
     return obj
@@ -1413,6 +1441,8 @@ export const QuestStateUpdate = {
   fromPartial<I extends Exact<DeepPartial<QuestStateUpdate>, I>>(object: I): QuestStateUpdate {
     const message = createBaseQuestStateUpdate()
     message.questInstanceId = object.questInstanceId ?? ""
+    message.name = object.name ?? ""
+    message.description = object.description ?? ""
     message.questState =
       object.questState !== undefined && object.questState !== null
         ? QuestState.fromPartial(object.questState)
