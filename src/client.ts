@@ -7,6 +7,7 @@ import { StartClient, StateUpdateCallback } from "./types"
 import deepEqual from "deep-equal"
 
 type ClientState = {
+  quests: Record<string, { questName: string, questDescription: string }>
   questStates: Record<string, QuestState>
   processingEvents: Array<{ eventId: number; action: Action }>
   callbacks: Array<StateUpdateCallback>
@@ -34,18 +35,19 @@ export async function createQuestsClient(ws: string): Promise<StartClient> {
 
       // there was an update on a quest state
       if (update.questState?.questState) {
+        state.quests[update.questState?.questInstanceId] = { questName: update.questState.name, questDescription: update.questState.description }
         state.questStates[update.questState.questInstanceId] = update.questState.questState
         for (const callback of state.callbacks) {
-          callback(state.questStates)
+          callback({ quests: state.quests, questStates: state.questStates })
         }
       }
     }
-    console.log("A ver pepe")
   }
 
   return {
     start: async (userAddress) => {
       const state = {
+        quests: {},
         questStates: {} as Record<string, QuestState>,
         processingEvents: new Array(),
         callbacks: new Array(),

@@ -8,7 +8,11 @@ export type QuestStates = Record<string, QuestState>
 /**
  * @public
  */
-export type StateUpdateCallback = (state: QuestStates) => void
+export type Quests = Record<string, { questName: string, questDescription: string }>
+/**
+ * @public
+ */
+export type StateUpdateCallback = (clientState: {quests: Quests, questStates: QuestStates}) => void
 /**
  * @public
  */
