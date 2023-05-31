@@ -3,7 +3,7 @@ import { createRpcClient } from '@dcl/rpc'
 import { WebSocketTransport } from '@dcl/rpc/dist/transports/WebSocket'
 import deepEqual from 'deep-equal'
 import { Action, Quest, QuestsServiceDefinition, QuestState } from './protocol/quests'
-import { getHeaders, SignedFetchRequest } from '~system/SignedFetch'
+import { getHeaders } from '~system/SignedFetch'
 
 /**
  * @param wsUrl - WebSocket URL to connect to the Quests server, example: `wss://quests-rpc.decentraland.{env}`
