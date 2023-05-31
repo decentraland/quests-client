@@ -4,36 +4,50 @@
   "description": "Quests Client",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
-  "scripts": {},
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/decentraland/quests.git"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "decentraland",
+    "quests"
+  ],
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/decentraland/quests/issues"
   },
+  "homepage": "https://github.com/decentraland/quests#readme",
   "prettier": {
     "printWidth": 120,
-    "semi": false
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "none",
+    "tabWidth": 2
   },
-  "homepage": "https://github.com/decentraland/quests#readme",
   "devDependencies": {
-    "@microsoft/api-extractor": "7.34.4",
+    "@dcl/eslint-config": "^1.1.1",
     "@types/deep-equal": "^1.0.1",
-    "@types/jest": "^28.1.0",
-    "jest": "^28.1.0",
-    "ts-jest": "^28.0.4",
-    "typescript": "^4.7.3"
+    "@types/jest": "^28.1.8",
+    "@types/ws": "^8.5.4",
+    "@typescript-eslint/eslint-plugin": "^5.58.0",
+    "@typescript-eslint/parser": "^5.58.0",
+    "eslint": "^8.38.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "jest": "^28.1.3",
+    "prettier": "^2.8.7",
+    "ts-jest": "^28.0.8",
+    "typescript": "^4.9.5"
   },
-  "files": [
-    "dist"
-  ],
   "dependencies": {
     "@dcl/rpc": "^1.1.1",
-    "@types/ws": "^8.5.4",
+    "@dcl/sdk": "^7.1.18-5135429602.commit-241816a",
     "deep-equal": "^2.2.0"
-  }
+  },
+  "files": [
+    "/dist"
+  ]
 }
