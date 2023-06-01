@@ -1,6 +1,6 @@
 {
   "name": "@dcl/quests-client",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Quests Client",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
