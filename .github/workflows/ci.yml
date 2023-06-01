@@ -21,6 +21,8 @@ jobs:
         run: npm i -g npm@8
       - name: install
         run: npm install
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
       - name: build
         run: make build
       - name: Publish
