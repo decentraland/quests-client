@@ -7,17 +7,18 @@
   Quests Client - SDK7
 </h1>
 
-
-Quests Client for SDK7 is a [RPC Client](https://github.com/decentraland/rpc "Decentraland RPC repository") which interacts with the [Quests Server](https://github.com/decentraland/quests/ "Decentraland Quests repository") to track quests states and send events to make progress.
+Quests Client for SDK7 is a [RPC Client](https://github.com/decentraland/rpc 'Decentraland RPC repository') which interacts with the [Quests Server](https://github.com/decentraland/quests/ 'Decentraland Quests repository') to track quests states and send events to make progress.
 
 # Setup
 
 Start by installing NPM dependecies:
+
 ```console
 $ npm install
 ```
 
 The project uses the Quests Service [proto definition](./src/protocol/quests.proto) to generate the code required to compile, so before start the development, make sure you run:
+
 ```console
 $ make build
 ```
@@ -27,15 +28,19 @@ $ make build
 This library is intended to be used in a Decentraland Scene and uses SDK7 features like user authentication to initialize the client.
 
 ## Install
+
 Add dependency to your project
+
 ```console
 $ npm add @dcl/quests-client
 ```
+
 ## Example
 
 Create the Quests Client inside the `executeTask` and if the wallet based authentication is OK you will be ready to use the client to subscribe to updates or send new events that may make progress on a quest.
 
 For this example we registered two observables to make use of the client from any other part of your code: `questEventsObservable` and `questStartObservable`
+
 ```typescript
 executeTask(async () => {
   // retrieve websocket url from env
@@ -60,6 +65,10 @@ executeTask(async () => {
     client.onUpdate((quest) => {
       // update your state here or react to the quest updates
     })
+
+    // retrieve all quest instances and their state
+    const instances = client.getInstances()
+    ...
   } catch (e) {
     console.log(`[Your Scene] connection to ${ws} failed! ${e}`)
   }
@@ -68,4 +77,4 @@ executeTask(async () => {
 
 ### Scene Example: Quests Tracking
 
-In this [repository](https://github.com/decentraland/quests-scene/ "Quests Scene repository") you may find a scene that makes use of all the Quests Client features.
+In this [repository](https://github.com/decentraland/quests-scene/ 'Quests Scene repository') you may find a scene that makes use of all the Quests Client features.

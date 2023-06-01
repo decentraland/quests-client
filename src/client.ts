@@ -25,12 +25,12 @@ export async function createQuestsClient(wsUrl: string) {
       if (newQuest && newQuest.questState) {
         // TODO: check if server should send definition here
         const id = newQuest.questInstanceId
-        state.quests[id] = {
+        state.instances[id] = {
           id,
           quest: { name: newQuest.name, description: newQuest.description, definition: undefined },
           state: newQuest.questState
         }
-        state.onStarted.forEach((callback) => callback(state.quests[id]))
+        state.onStarted.forEach((callback) => callback(state.instances[id]))
       } else if (questUpdate && questUpdate.questData) {
         const questData = questUpdate.questData
         if (questData && questData.questState && questData.questInstanceId) {
@@ -38,9 +38,9 @@ export async function createQuestsClient(wsUrl: string) {
           state.processingEvents = state.processingEvents.filter((event) => event.eventId !== eventId)
 
           const { questState, questInstanceId } = questData
-          state.quests[questInstanceId].state = questState
+          state.instances[questInstanceId].state = questState
 
-          state.onUpdate.forEach((callback) => callback(state.quests[questInstanceId]))
+          state.onUpdate.forEach((callback) => callback(state.instances[questInstanceId]))
         }
       }
     }
@@ -52,7 +52,7 @@ export async function createQuestsClient(wsUrl: string) {
     }
 
     const match = (actionItem: Action) => deepEqual(actionItem, action)
-    const quests = Object.values(state.quests)
+    const quests = Object.values(state.instances)
     return quests
       .map((quest) => quest.state)
       .some((questState) =>
@@ -83,8 +83,12 @@ export async function createQuestsClient(wsUrl: string) {
     state.onUpdate.push(callback)
   }
 
+  function getInstances() {
+    return Object.values(state.instances)
+  }
+
   const state: ClientState = {
-    quests: {},
+    instances: {},
     processingEvents: [],
     onStarted: [],
     onUpdate: []
@@ -100,7 +104,7 @@ export async function createQuestsClient(wsUrl: string) {
     const quests = response.quests.quests
     quests.forEach((quest) => {
       if (quest.quest && quest.state) {
-        state.quests[quest.instanceId] = {
+        state.instances[quest.instanceId] = {
           id: quest.instanceId,
           quest: quest.quest,
           state: quest.state
@@ -114,6 +118,7 @@ export async function createQuestsClient(wsUrl: string) {
   })
 
   return {
+    getInstances,
     startQuest,
     abortQuest,
     sendEvent,
@@ -142,7 +147,7 @@ async function createClient(wsUrl: string): Promise<RpcClientModule<QuestsServic
 }
 
 type ClientState = {
-  quests: Record<string, QuestInstance>
+  instances: Record<string, QuestInstance>
   processingEvents: Array<{ eventId: string; action: Action }>
   onStarted: Array<OnStartedCallback>
   onUpdate: Array<OnUpdateCallback>
