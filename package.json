@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@dcl/eslint-config": "^1.1.1",
+    "@dcl/ts-proto": "^1.146.2",
     "@types/deep-equal": "^1.0.1",
     "@types/jest": "^28.1.8",
     "@types/ws": "^8.5.4",
@@ -43,7 +44,7 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
-    "@dcl/rpc": "^1.1.1",
+    "@dcl/rpc": "^1.1.2",
     "@dcl/sdk": "^7.1.18-5135429602.commit-241816a",
     "deep-equal": "^2.2.0"
   },
