@@ -147,7 +147,7 @@ async function createClient(wsUrl: string): Promise<RpcClientModule<QuestsServic
   const ws = new WebSocket(wsUrl)
   return new Promise((resolve, reject) => {
     ws.onopen = async () => {
-      const response = await getHeaders({ url: '/' })
+      const response = await getHeaders({ url: wsUrl })
       ws.send(JSON.stringify(response.headers))
 
       const transport = WebSocketTransport(ws as any)
