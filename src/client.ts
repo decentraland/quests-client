@@ -2,14 +2,7 @@ import { loadService, RpcClientModule } from '@dcl/rpc/dist/codegen'
 import { createRpcClient } from '@dcl/rpc'
 import { WebSocketTransport } from '@dcl/rpc/dist/transports/WebSocket'
 import deepEqual from 'deep-equal'
-import {
-  Action,
-  Quest,
-  QuestsServiceDefinition,
-  QuestState,
-  QuestStateUpdate,
-  QuestStateWithData
-} from './protocol/quests.gen'
+import { Action, Quest, QuestsServiceDefinition, QuestState, QuestStateUpdate } from './protocol/quests.gen'
 import { getHeaders } from '~system/SignedFetch'
 
 /**
@@ -17,29 +10,20 @@ import { getHeaders } from '~system/SignedFetch'
  * @returns a Quests client that can be used to interact with the server
  */
 export async function createQuestsClient(wsUrl: string) {
-  function handleNewQuestStarted(newQuest: QuestStateWithData) {
-    if (newQuest.questState) {
-      // TODO: check if server should send definition here
-      const id = newQuest.questInstanceId
-      state.instances[id] = {
-        id,
-        quest: { name: newQuest.name, description: newQuest.description, definition: undefined },
-        state: newQuest.questState
-      }
-      state.onStarted.forEach((callback) => callback(state.instances[id]))
-    }
+  function handleNewQuestStarted(newQuest: QuestInstance) {
+    state.instances[newQuest.id] = newQuest
+    state.onStarted.forEach((callback) => callback(newQuest))
   }
 
   function handleQuestUpdate(questUpdate: QuestStateUpdate) {
-    const questData = questUpdate.questData
-    if (questData && questData.questState && questData.questInstanceId) {
+    if (questUpdate.questState) {
       const eventId = questUpdate.eventId
       state.processingEvents = state.processingEvents.filter((event) => event.eventId !== eventId)
 
-      const { questState, questInstanceId } = questData
-      state.instances[questInstanceId].state = questState
+      const { questState, instanceId } = questUpdate
+      state.instances[instanceId].state = questState
 
-      state.onUpdate.forEach((callback) => callback(state.instances[questInstanceId]))
+      state.onUpdate.forEach((callback) => callback(state.instances[instanceId]))
     }
   }
 
@@ -56,7 +40,7 @@ export async function createQuestsClient(wsUrl: string) {
       } else if (update.message?.$case === 'questStateUpdate') {
         handleQuestUpdate(update.message.questStateUpdate)
       } else if (update.message?.$case === 'newQuestStarted') {
-        handleNewQuestStarted(update.message.newQuestStarted)
+        handleNewQuestStarted(update.message.newQuestStarted as QuestInstance)
       }
     }
   }
@@ -117,29 +101,23 @@ export async function createQuestsClient(wsUrl: string) {
     console.error(`[Quests Client] Error while fetching quests: ${allQuestsResponse.response.internalServerError}`)
     throw new Error(`Couldn't not initialize Quests client`)
   } else if (allQuestsResponse.response?.$case === 'quests') {
-    const quests = allQuestsResponse.response.quests.quests
-    quests.forEach((quest) => {
-      if (quest.quest && quest.state) {
-        state.instances[quest.instanceId] = {
-          id: quest.instanceId,
-          quest: quest.quest,
-          state: quest.state
-        }
-      }
+    const instances = allQuestsResponse.response.quests.instances
+    instances.forEach((instance) => {
+      state.instances[instance.id] = instance as QuestInstance
     })
-  }
 
-  subscribe().catch((e) => {
-    console.error(`[Quests Client] Error while receiving updates: ${e}`)
-  })
+    subscribe().catch((e) => {
+      console.error(`[Quests Client] Error while receiving updates: ${e}`)
+    })
 
-  return {
-    getInstances,
-    startQuest,
-    abortQuest,
-    sendEvent,
-    onStarted,
-    onUpdate
+    return {
+      getInstances,
+      startQuest,
+      abortQuest,
+      sendEvent,
+      onStarted,
+      onUpdate
+    }
   }
 }
 
