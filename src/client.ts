@@ -2,7 +2,8 @@ import { loadService, RpcClientModule } from '@dcl/rpc/dist/codegen'
 import { createRpcClient } from '@dcl/rpc'
 import { WebSocketTransport } from '@dcl/rpc/dist/transports/WebSocket'
 import deepEqual from 'deep-equal'
-import { Action, Quest, QuestsServiceDefinition, QuestState, QuestStateUpdate } from './protocol/quests.gen'
+import { Action, QuestState } from '.'
+import { Quest, QuestsServiceDefinition, QuestStateUpdate } from './protocol/quests.gen'
 import { getHeaders } from '~system/SignedFetch'
 
 /**
@@ -109,15 +110,15 @@ export async function createQuestsClient(wsUrl: string) {
     subscribe().catch((e) => {
       console.error(`[Quests Client] Error while receiving updates: ${e}`)
     })
+  }
 
-    return {
-      getInstances,
-      startQuest,
-      abortQuest,
-      sendEvent,
-      onStarted,
-      onUpdate
-    }
+  return {
+    getInstances,
+    startQuest,
+    abortQuest,
+    sendEvent,
+    onStarted,
+    onUpdate
   }
 }
 

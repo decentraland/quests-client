@@ -1,2 +1,10 @@
 export * from './client'
-export { QuestState, Action, StepContent } from './protocol/quests.gen'
+export {
+  AbortQuestResponse,
+  StartQuestResponse,
+  EventResponse,
+  QuestState,
+  Quest,
+  Action,
+  StepContent
+} from './protocol/quests.gen'
