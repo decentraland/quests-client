@@ -3,7 +3,7 @@ import { createRpcClient } from '@dcl/rpc'
 import { WebSocketTransport } from '@dcl/rpc/dist/transports/WebSocket'
 import deepEqual from 'deep-equal'
 import { Action, QuestState } from '.'
-import { Quest, QuestsServiceDefinition, QuestStateUpdate } from './protocol/quests.gen'
+import { Quest, QuestsServiceDefinition, QuestStateUpdate, UserUpdate } from './protocol/quests.gen'
 import { getHeaders } from '~system/SignedFetch'
 
 /**
@@ -28,14 +28,14 @@ export async function createQuestsClient(wsUrl: string) {
     }
   }
 
-  function handleEventIgnored(eventIgnored: number) {
+  function handleEventIgnored(eventIgnored: string) {
     // TODO: eventIgnored should be a string, .proto is outdated and server is not sending this event yet
-    state.processingEvents = state.processingEvents.filter((event) => event.eventId === eventIgnored?.toString())
+    state.processingEvents = state.processingEvents.filter((event) => event.eventId === eventIgnored)
   }
 
-  async function subscribe() {
-    for await (const update of client.subscribe({})) {
-      console.log(`[@dcl/quests-client] update received ${update}`)
+  async function listenToSubscription(subscription: AsyncGenerator<UserUpdate, any, unknown>) {
+    for await (const update of subscription) {
+      console.log(`[@dcl/quests-client] update received ${JSON.stringify(update)}`)
       if (update.message?.$case === 'eventIgnored') {
         handleEventIgnored(update.message.eventIgnored)
       } else if (update.message?.$case === 'questStateUpdate') {
@@ -99,7 +99,7 @@ export async function createQuestsClient(wsUrl: string) {
   const { startQuest, abortQuest } = client
   const allQuestsResponse = await client.getAllQuests({})
   if (allQuestsResponse.response?.$case === 'internalServerError') {
-    console.error(`[Quests Client] Error while fetching quests: ${allQuestsResponse.response.internalServerError}`)
+    console.error(`[@dcl/quests-client] Error while fetching quests: ${allQuestsResponse.response.internalServerError}`)
     throw new Error(`Couldn't not initialize Quests client`)
   } else if (allQuestsResponse.response?.$case === 'quests') {
     const instances = allQuestsResponse.response.quests.instances
@@ -107,9 +107,23 @@ export async function createQuestsClient(wsUrl: string) {
       state.instances[instance.id] = instance as QuestInstance
     })
 
-    subscribe().catch((e) => {
-      console.error(`[Quests Client] Error while receiving updates: ${e}`)
-    })
+    const subscription = client.subscribe({})
+
+    const {
+      value: { message }
+    } = await subscription.next()
+
+    console.log('[@dcl/quests-client] first message received ', JSON.stringify(message))
+
+    if (message?.$case === 'subscribed') {
+      console.log(`[@dcl/quests-client] subscription to updates was confirmed`)
+      listenToSubscription(subscription).catch((e) => {
+        console.error(`[@dcl/quests-client] Error while receiving updates: ${e}`)
+      })
+    } else {
+      console.error(`[@dcl/quests-client] Error while subscribing to updates: ${message}`)
+      throw new Error("[@dcl/quests-client] First Subscription message wasn't 'subscribed'")
+    }
   }
 
   return {
