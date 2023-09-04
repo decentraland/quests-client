@@ -5,10 +5,10 @@ import ReactEcs, { Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 export function createQuestHUD() {
   let quest: { name: string; tasks: { done: boolean; description: string }[] } | null = null
   let entity: Entity | null = null
+
+  ReactEcsRenderer.setUiRenderer(uiComponent)
+
   return {
-    render: () => {
-      ReactEcsRenderer.setUiRenderer(uiComponent)
-    },
     addQuest: (name: string, tasks: { done: boolean; description: string }[]) => {
       const questEntity = engine.addEntity()
       QuestComponent.create(questEntity, { name, tasks })
@@ -23,8 +23,6 @@ export function createQuestHUD() {
     }
   }
 }
-
-const src = 'images/rounded_alpha_square.png'
 
 const QuestComponent = engine.defineComponent('dcl:quests:QuestComponent', {
   name: Schemas.String,
@@ -47,11 +45,7 @@ const questUI = (quest: { name: string; tasks: readonly { done: boolean; descrip
       margin: 0
     }}
     uiBackground={{
-      color: Color4.create(0, 0, 0, 0.9),
-      textureMode: 'nine-slices',
-      texture: {
-        src
-      }
+      color: Color4.create(0, 0, 0, 0.9)
     }}
   >
     <Label
