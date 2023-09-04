@@ -46,7 +46,8 @@
   "dependencies": {
     "@dcl/rpc": "^1.1.2",
     "@dcl/sdk": "^7.1.18-5135429602.commit-241816a",
-    "deep-equal": "^2.2.0"
+    "deep-equal": "^2.2.0",
+    "mitt": "^3.0.1"
   },
   "files": [
     "/dist"
