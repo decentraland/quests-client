@@ -3,14 +3,33 @@ import { createRpcClient } from '@dcl/rpc'
 import { WebSocketTransport } from '@dcl/rpc/dist/transports/WebSocket'
 import deepEqual from 'deep-equal'
 import { Action, QuestState } from '.'
-import { Quest, QuestsServiceDefinition, QuestStateUpdate, UserUpdate } from './protocol/quests.gen'
+import {
+  AbortQuestRequest,
+  AbortQuestResponse,
+  EventResponse,
+  Quest,
+  QuestsServiceDefinition,
+  QuestStateUpdate,
+  StartQuestRequest,
+  StartQuestResponse,
+  UserUpdate
+} from './protocol/quests.gen'
 import { getHeaders } from '~system/SignedFetch'
+import { UnaryClientMethod } from '@dcl/rpc/dist/codegen-types'
+
+type QuestsClient = {
+  startQuest: UnaryClientMethod<StartQuestRequest, StartQuestResponse>
+  abortQuest: UnaryClientMethod<AbortQuestRequest, AbortQuestResponse>
+  sendEvent: (event: { action: Action }) => Promise<EventResponse | undefined>
+  onStarted: (callback: OnStartedCallback) => void
+  onUpdate: (callback: OnUpdateCallback) => void
+}
 
 /**
  * @param wsUrl - WebSocket URL to connect to the Quests server, example: `wss://quests-rpc.decentraland.{env}`
  * @returns a Quests client that can be used to interact with the server
  */
-export async function createQuestsClient(wsUrl: string) {
+export async function createQuestsClient(wsUrl: string): Promise<QuestsClient> {
   function handleNewQuestStarted(newQuest: QuestInstance) {
     state.instances[newQuest.id] = newQuest
     state.onStarted.forEach((callback) => callback(newQuest))
@@ -84,10 +103,6 @@ export async function createQuestsClient(wsUrl: string) {
     state.onUpdate.push(callback)
   }
 
-  function getInstances() {
-    return Object.values(state.instances)
-  }
-
   const state: ClientState = {
     instances: {},
     processingEvents: [],
@@ -95,39 +110,27 @@ export async function createQuestsClient(wsUrl: string) {
     onUpdate: []
   }
 
-  const client = await createClient(wsUrl)
+  const { client, connection } = await createClient(wsUrl)
   const { startQuest, abortQuest } = client
-  const allQuestsResponse = await client.getAllQuests({})
-  if (allQuestsResponse.response?.$case === 'internalServerError') {
-    console.error(`[@dcl/quests-client] Error while fetching quests: ${allQuestsResponse.response.internalServerError}`)
-    throw new Error(`Couldn't not initialize Quests client`)
-  } else if (allQuestsResponse.response?.$case === 'quests') {
-    const instances = allQuestsResponse.response.quests.instances
-    instances.forEach((instance) => {
-      state.instances[instance.id] = instance as QuestInstance
+
+  const subscription = client.subscribe({})
+
+  const {
+    value: { message }
+  } = await subscription.next()
+
+  if (message?.$case === 'subscribed') {
+    console.log(`[@dcl/quests-client] subscription to updates was confirmed`)
+    listenToSubscription(subscription).catch((e) => {
+      console.error(`[@dcl/quests-client] Error while receiving updates: ${e}`)
     })
-
-    const subscription = client.subscribe({})
-
-    const {
-      value: { message }
-    } = await subscription.next()
-
-    console.log('[@dcl/quests-client] first message received ', JSON.stringify(message))
-
-    if (message?.$case === 'subscribed') {
-      console.log(`[@dcl/quests-client] subscription to updates was confirmed`)
-      listenToSubscription(subscription).catch((e) => {
-        console.error(`[@dcl/quests-client] Error while receiving updates: ${e}`)
-      })
-    } else {
-      console.error(`[@dcl/quests-client] Error while subscribing to updates: ${message}`)
-      throw new Error("[@dcl/quests-client] First Subscription message wasn't 'subscribed'")
-    }
+  } else {
+    console.error(`[@dcl/quests-client] Error while subscribing to updates: ${message}`)
+    connection.close()
+    throw new Error('[@dcl/quests-client] Connection broken')
   }
 
   return {
-    getInstances,
     startQuest,
     abortQuest,
     sendEvent,
@@ -136,7 +139,9 @@ export async function createQuestsClient(wsUrl: string) {
   }
 }
 
-async function createClient(wsUrl: string): Promise<RpcClientModule<QuestsServiceDefinition>> {
+async function createClient(
+  wsUrl: string
+): Promise<{ client: RpcClientModule<QuestsServiceDefinition>; connection: WebSocket }> {
   const ws = new WebSocket(wsUrl)
   return new Promise((resolve, reject) => {
     ws.onopen = async () => {
@@ -147,7 +152,7 @@ async function createClient(wsUrl: string): Promise<RpcClientModule<QuestsServic
       const rpcClient = await createRpcClient(transport)
       const port = await rpcClient.createPort('quests-client')
       const client = loadService<NonNullable<unknown>, QuestsServiceDefinition>(port, QuestsServiceDefinition)
-      resolve(client)
+      resolve({ client, connection: ws })
     }
     ws.onclose = () => {
       reject(`Couldn't connect to Quests server`)
