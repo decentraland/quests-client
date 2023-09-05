@@ -9,18 +9,18 @@ export function createQuestHUD() {
   ReactEcsRenderer.setUiRenderer(uiComponent)
 
   return {
-    addQuest: (name: string, tasks: { done: boolean; description: string }[]) => {
-      const questEntity = engine.addEntity()
-      QuestComponent.create(questEntity, { name, tasks })
-      entity = questEntity
-      quest = { name, tasks }
-    },
-    update: (tasks: { done: boolean; description: string }[]) => {
+    upsert: (name: string, tasks: { done: boolean; description: string }[]) => {
       if (entity && quest) {
         QuestComponent.createOrReplace(entity, { name: quest.name, tasks })
         quest = { name: quest.name, tasks }
+      } else {
+        const questEntity = engine.addEntity()
+        QuestComponent.create(questEntity, { name, tasks })
+        entity = questEntity
+        quest = { name, tasks }
       }
-    }
+    },
+    rerender: () => ReactEcsRenderer.setUiRenderer(uiComponent)
   }
 }
 
