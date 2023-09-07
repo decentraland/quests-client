@@ -2,11 +2,26 @@ import { engine, Entity, Schemas } from '@dcl/sdk/ecs'
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 
-export function createQuestHUD() {
+export type QuestHudOptions = {
+  /**
+   *  Color for Background in HEX
+   */
+  backgoundHexColor?: string
+  /**
+   * Font size in pixels for HUD title
+   */
+  titleFontSize?: number
+  /**
+   * Font size in pixels for tasks descriptions
+   */
+  descriptionFontSize?: number
+}
+
+export function createQuestHUD(opts: QuestHudOptions) {
   let quest: { name: string; tasks: { done: boolean; description: string }[] } | null = null
   let entity: Entity | null = null
 
-  ReactEcsRenderer.setUiRenderer(uiComponent)
+  ReactEcsRenderer.setUiRenderer(() => uiComponent(opts))
 
   return {
     upsert: (name: string, tasks: { done: boolean; description: string }[]) => {
@@ -20,7 +35,7 @@ export function createQuestHUD() {
         quest = { name, tasks }
       }
     },
-    rerender: () => ReactEcsRenderer.setUiRenderer(uiComponent)
+    rerender: () => ReactEcsRenderer.setUiRenderer(() => uiComponent(opts))
   }
 }
 
@@ -34,7 +49,10 @@ const QuestComponent = engine.defineComponent('dcl:quests:QuestComponent', {
   )
 })
 
-const questUI = (quest: { name: string; tasks: readonly { done: boolean; description: string }[] }) => (
+const questUI = (
+  quest: { name: string; tasks: readonly { done: boolean; description: string }[] },
+  stylingOpts: QuestHudOptions
+) => (
   <UiEntity
     uiTransform={{
       flexDirection: 'column',
@@ -45,7 +63,9 @@ const questUI = (quest: { name: string; tasks: readonly { done: boolean; descrip
       margin: 0
     }}
     uiBackground={{
-      color: Color4.create(0, 0, 0, 0.9)
+      color: stylingOpts.backgoundHexColor
+        ? Color4.fromHexString(stylingOpts.backgoundHexColor)
+        : Color4.create(0, 0, 0, 0.9)
     }}
   >
     <Label
@@ -55,7 +75,7 @@ const questUI = (quest: { name: string; tasks: readonly { done: boolean; descrip
       }}
       textAlign="middle-left"
       value={`Quest's Name: ${quest.name}`}
-      fontSize={12}
+      fontSize={stylingOpts.titleFontSize || 12}
     />
     <UiEntity
       uiTransform={{
@@ -65,12 +85,12 @@ const questUI = (quest: { name: string; tasks: readonly { done: boolean; descrip
         overflow: 'hidden'
       }}
     >
-      {[...quest.tasks].map(task)}
+      {[...quest.tasks].map((t) => task(t, stylingOpts.descriptionFontSize))}
     </UiEntity>
   </UiEntity>
 )
 
-const task = (task: { done: boolean; description: string }) => (
+const task = (task: { done: boolean; description: string }, fontSize?: number) => (
   <Label
     uiTransform={{
       overflow: 'hidden',
@@ -78,11 +98,11 @@ const task = (task: { done: boolean; description: string }) => (
     }}
     textAlign="middle-left"
     value={`${task.done ? 'X' : 'O'} ${task.description}`}
-    fontSize={10}
+    fontSize={fontSize || 10}
   />
 )
 
-const uiComponent = () => (
+const uiComponent = (props: QuestHudOptions) => (
   <UiEntity
     uiTransform={{
       flex: 1,
@@ -94,6 +114,6 @@ const uiComponent = () => (
       position: { top: '28%' }
     }}
   >
-    {[...engine.getEntitiesWith(QuestComponent)].map(([_, quest]) => questUI(quest))}
+    {[...engine.getEntitiesWith(QuestComponent)].map(([_, quest]) => questUI(quest, props))}
   </UiEntity>
 )
