@@ -72,11 +72,12 @@ export async function createQuestsClient(wsUrl: string, questId: string): Promis
   }
 
   function isActionValidForQuestStates(action: Action) {
-    if (state.processingEvents.some((event) => deepEqual(event.action, action))) {
+    const match = (actionItem: Action) => deepEqual(actionItem, action)
+
+    if (state.processingEvents.some((event) => match(event.action))) {
       return false
     }
 
-    const match = (actionItem: Action) => deepEqual(actionItem, action)
     const quests = Object.values(state.instances)
     return quests
       .map((quest) => quest.state)
