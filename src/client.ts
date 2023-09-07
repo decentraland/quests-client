@@ -72,7 +72,7 @@ export async function createQuestsClient(wsUrl: string, questId: string): Promis
   }
 
   function isActionValidForQuestStates(action: Action) {
-    if (state.processingEvents.some((event) => event.action === action)) {
+    if (state.processingEvents.some((event) => deepEqual(event.action, action))) {
       return false
     }
 
