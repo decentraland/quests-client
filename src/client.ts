@@ -23,6 +23,7 @@ type QuestsClient = {
   sendEvent: (event: { action: Action }) => Promise<EventResponse | undefined>
   onStarted: (callback: OnStartedCallback) => void
   onUpdate: (callback: OnUpdateCallback) => void
+  getInstances: () => QuestInstance[]
 }
 
 /**
@@ -103,6 +104,10 @@ export async function createQuestsClient(wsUrl: string): Promise<QuestsClient> {
     state.onUpdate.push(callback)
   }
 
+  function getInstances() {
+    return Object.values(state.instances)
+  }
+
   const state: ClientState = {
     instances: {},
     processingEvents: [],
@@ -113,21 +118,31 @@ export async function createQuestsClient(wsUrl: string): Promise<QuestsClient> {
   const { client, connection } = await createClient(wsUrl)
   const { startQuest, abortQuest } = client
 
-  const subscription = client.subscribe({})
-
-  const {
-    value: { message }
-  } = await subscription.next()
-
-  if (message?.$case === 'subscribed') {
-    console.log(`[@dcl/quests-client] subscription to updates was confirmed`)
-    listenToSubscription(subscription).catch((e) => {
-      console.error(`[@dcl/quests-client] Error while receiving updates: ${e}`)
+  const allQuestsResponse = await client.getAllQuests({})
+  if (allQuestsResponse.response?.$case === 'internalServerError') {
+    console.error(`[@dcl/quests-client] Error while fetching quests: ${allQuestsResponse.response.internalServerError}`)
+    throw new Error(`Couldn't not initialize Quests client`)
+  } else if (allQuestsResponse.response?.$case === 'quests') {
+    const instances = allQuestsResponse.response.quests.instances
+    instances.forEach((instance) => {
+      state.instances[instance.id] = instance as QuestInstance
     })
-  } else {
-    console.error(`[@dcl/quests-client] Error while subscribing to updates: ${message}`)
-    connection.close()
-    throw new Error('[@dcl/quests-client] Connection broken')
+    const subscription = client.subscribe({})
+
+    const {
+      value: { message }
+    } = await subscription.next()
+
+    if (message?.$case === 'subscribed') {
+      console.log(`[@dcl/quests-client] subscription to updates was confirmed`)
+      listenToSubscription(subscription).catch((e) => {
+        console.error(`[@dcl/quests-client] Error while receiving updates: ${e}`)
+      })
+    } else {
+      console.error(`[@dcl/quests-client] Error while subscribing to updates: ${message}`)
+      connection.close()
+      throw new Error('[@dcl/quests-client] Connection broken')
+    }
   }
 
   return {
@@ -135,7 +150,8 @@ export async function createQuestsClient(wsUrl: string): Promise<QuestsClient> {
     abortQuest,
     sendEvent,
     onStarted,
-    onUpdate
+    onUpdate,
+    getInstances
   }
 }
 
