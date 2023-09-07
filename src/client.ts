@@ -30,21 +30,26 @@ type QuestsClient = {
  * @param wsUrl - WebSocket URL to connect to the Quests server, example: `wss://quests-rpc.decentraland.{env}`
  * @returns a Quests client that can be used to interact with the server
  */
-export async function createQuestsClient(wsUrl: string): Promise<QuestsClient> {
+export async function createQuestsClient(wsUrl: string, questId: string): Promise<QuestsClient> {
   function handleNewQuestStarted(newQuest: QuestInstance) {
     state.instances[newQuest.id] = newQuest
-    state.onStarted.forEach((callback) => callback(newQuest))
+    if (newQuest.quest.id === questId) {
+      state.onStarted.forEach((callback) => callback(newQuest))
+    }
   }
 
   function handleQuestUpdate(questUpdate: QuestStateUpdate) {
-    if (questUpdate.questState) {
-      const eventId = questUpdate.eventId
-      state.processingEvents = state.processingEvents.filter((event) => event.eventId !== eventId)
+    const questIdOfInstance = state.instances[questUpdate.instanceId].quest.id
+    if (questIdOfInstance === questId) {
+      if (questUpdate.questState) {
+        const eventId = questUpdate.eventId
+        state.processingEvents = state.processingEvents.filter((event) => event.eventId !== eventId)
 
-      const { questState, instanceId } = questUpdate
-      state.instances[instanceId].state = questState
+        const { questState, instanceId } = questUpdate
+        state.instances[instanceId].state = questState
 
-      state.onUpdate.forEach((callback) => callback(state.instances[instanceId]))
+        state.onUpdate.forEach((callback) => callback(state.instances[instanceId]))
+      }
     }
   }
 
