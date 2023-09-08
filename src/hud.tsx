@@ -132,7 +132,9 @@ const questUI = (quest: QuestUI, stylingOpts?: QuestHudOptions) => {
           ...stylingOpts?.stepsContainer
         }}
       >
-        {[...quest.steps].map((s) => step(s, stylingOpts))}
+        {[...quest.steps].map((s) => (
+          <UiEntity uiTransform={{ flexDirection: 'column' }}>{step(s, stylingOpts)}</UiEntity>
+        ))}
       </UiEntity>
       <Label
         uiTransform={{
@@ -163,7 +165,9 @@ const step = (step: QuestUI['steps'][number], stylingOpts?: QuestHudOptions) => 
         value={`Current step: ${step.name} - Tasks: `}
         {...stylingOpts?.stepsTitle?.labelProps}
       />
-      {[...step.tasks].map((t) => task(t, stylingOpts))}
+      {[...step.tasks].map((t) => (
+        <UiEntity>{task(t, stylingOpts)}</UiEntity>
+      ))}
     </UiEntity>
   )
 }
