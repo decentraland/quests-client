@@ -52,9 +52,7 @@ export function createQuestHUD(opts?: QuestHudOptions) {
     upsert: (newQuest: QuestUI) => {
       if (entity && quest) {
         QuestComponent.createOrReplace(entity, {
-          name: newQuest.name,
-          steps: [...newQuest.steps],
-          nextSteps: [...newQuest.nextSteps]
+          ...newQuest
         })
         quest = { ...newQuest }
       } else {
