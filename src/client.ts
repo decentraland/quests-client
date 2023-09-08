@@ -12,6 +12,8 @@ type QuestsClient = {
   sendEvent: (event: { action: Action }) => Promise<EventResponse | undefined>
   onStarted: (callback: OnStartedCallback) => void
   onUpdate: (callback: OnUpdateCallback) => void
+  isQuestStarted: () => boolean
+  getQuestInstance: () => QuestInstance | null
   getInstances: () => QuestInstance[]
 }
 
@@ -104,6 +106,17 @@ export async function createQuestsClient(wsUrl: string, questId: string): Promis
     return Object.values(state.instances)
   }
 
+  function isQuestStarted() {
+    return !!getInstances().find((instance) => instance.quest.id === questId)
+  }
+
+  function getQuestInstance() {
+    const quest = getInstances().find((instance) => instance.quest.id === questId)
+    if (quest) return quest
+
+    return null
+  }
+
   const state: ClientState = {
     instances: {},
     processingEvents: [],
@@ -184,6 +197,8 @@ export async function createQuestsClient(wsUrl: string, questId: string): Promis
   return {
     startQuest: start,
     abortQuest: abort,
+    isQuestStarted,
+    getQuestInstance,
     sendEvent,
     onStarted,
     onUpdate,
