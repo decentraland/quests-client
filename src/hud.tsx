@@ -94,61 +94,64 @@ export type QuestUI = {
   nextSteps: string[]
 }
 
-const questUI = (quest: QuestUI, stylingOpts?: QuestHudOptions) => (
-  <UiEntity
-    uiTransform={{
-      flexDirection: 'column',
-      width: '100%',
-      minHeight: 20,
-      maxHeight: 100,
-      padding: 10,
-      margin: 0
-    }}
-    uiBackground={{
-      color: stylingOpts?.backgoundHexColor
-        ? Color4.fromHexString(stylingOpts.backgoundHexColor)
-        : Color4.create(0, 0, 0, 0.9)
-    }}
-  >
-    <Label
-      uiTransform={{
-        width: '100%',
-        minHeight: 12,
-        ...stylingOpts?.questTitle?.uiTransform
-      }}
-      textAlign="middle-left"
-      fontSize={12}
-      value={`Quest's Name: ${quest.name}`}
-      {...stylingOpts?.questTitle?.labelProps}
-    />
+const questUI = (quest: QuestUI, stylingOpts?: QuestHudOptions) => {
+  const nextSteps = quest.nextSteps.join(', ')
+  return (
     <UiEntity
       uiTransform={{
         flexDirection: 'column',
         width: '100%',
-        padding: { top: 10, bottom: 10 },
-        overflow: 'hidden',
-        ...stylingOpts?.stepsContainer
+        minHeight: 20,
+        maxHeight: 100,
+        padding: 10,
+        margin: 0
+      }}
+      uiBackground={{
+        color: stylingOpts?.backgoundHexColor
+          ? Color4.fromHexString(stylingOpts.backgoundHexColor)
+          : Color4.create(0, 0, 0, 0.9)
       }}
     >
-      {[...quest.steps].map((s) => step(s, stylingOpts))}
+      <Label
+        uiTransform={{
+          width: '100%',
+          minHeight: 12,
+          ...stylingOpts?.questTitle?.uiTransform
+        }}
+        textAlign="middle-left"
+        fontSize={12}
+        value={`Quest's Name: ${quest.name}`}
+        {...stylingOpts?.questTitle?.labelProps}
+      />
+      <UiEntity
+        uiTransform={{
+          flexDirection: 'column',
+          width: '100%',
+          padding: { top: 10, bottom: 10 },
+          overflow: 'hidden',
+          ...stylingOpts?.stepsContainer
+        }}
+      >
+        {[...quest.steps].map((s) => step(s, stylingOpts))}
+      </UiEntity>
+      <Label
+        uiTransform={{
+          width: '100%',
+          minHeight: 12,
+          ...stylingOpts?.nextSteps?.uiTransform
+        }}
+        textAlign="middle-left"
+        fontSize={12}
+        value={`Next steps: ${nextSteps}`}
+        {...stylingOpts?.nextSteps?.labelProps}
+      />
     </UiEntity>
-    <Label
-      uiTransform={{
-        width: '100%',
-        minHeight: 12,
-        ...stylingOpts?.nextSteps?.uiTransform
-      }}
-      textAlign="middle-left"
-      fontSize={12}
-      value={`Next steps: ${quest.nextSteps.join(', ')}`}
-      {...stylingOpts?.nextSteps?.labelProps}
-    />
-  </UiEntity>
-)
+  )
+}
 
 const step = (step: QuestUI['steps'][number], stylingOpts?: QuestHudOptions) => {
   return (
-    <UiEntity>
+    <UiEntity uiTransform={{ flexDirection: 'column' }}>
       <Label
         uiTransform={{
           overflow: 'hidden',
@@ -157,7 +160,7 @@ const step = (step: QuestUI['steps'][number], stylingOpts?: QuestHudOptions) => 
         }}
         textAlign="middle-left"
         fontSize={10}
-        value={`Current step: ${step.name}`}
+        value={`Current step: ${step.name} - Tasks: `}
         {...stylingOpts?.stepsTitle?.labelProps}
       />
       {[...step.tasks].map((t) => task(t, stylingOpts))}
@@ -174,7 +177,7 @@ const task = (task: QuestUI['steps'][number]['tasks'][number], stylingOpts?: Que
     }}
     textAlign="middle-left"
     fontSize={10}
-    value={`${task.done ? 'X' : 'O'} ${task.description}`}
+    value={`${task.done ? 'DONE: ' : 'TODO: '} ${task.description}`}
     {...stylingOpts?.taskDescription?.labelProps}
   />
 )
@@ -191,7 +194,7 @@ const uiComponent = (props?: QuestHudOptions) => (
         {
           name: quest.name,
           steps: [...(quest.steps as unknown as QuestUI['steps'])],
-          nextSteps: [...(quest.steps as unknown as QuestUI['nextSteps'])]
+          nextSteps: [...(quest.nextSteps as unknown as QuestUI['nextSteps'])]
         },
         props
       )
