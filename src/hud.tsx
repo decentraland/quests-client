@@ -379,7 +379,9 @@ function generateQuestUI(questInstance: QuestInstance): QuestUI {
           ...questInstance.quest.definition?.connections
             .filter((conn) => conn.stepFrom === step.id)
             .map(
-              (conn) => questInstance.quest.definition?.steps.find((step) => step.id === conn.stepTo)?.description || ''
+              (conn) =>
+                questInstance.quest.definition?.steps.find((step) => step.id === conn.stepTo)?.description ||
+                'No name :('
             )
         )
       }
