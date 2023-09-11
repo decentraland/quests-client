@@ -1,68 +1,93 @@
 import { engine, Entity, Schemas } from '@dcl/sdk/ecs'
 import { Color4 } from '@dcl/sdk/math'
-import ReactEcs, { Label, ReactEcsRenderer, UiEntity, UiLabelProps, UiTransformProps } from '@dcl/sdk/react-ecs'
+import ReactEcs, {
+  Button,
+  Label,
+  ReactEcsRenderer,
+  UiBackgroundProps,
+  UiButtonProps,
+  UiEntity,
+  UiLabelProps,
+  UiTransformProps,
+  EntityPropTypes
+} from '@dcl/sdk/react-ecs'
+import { QuestInstance } from './client'
+
+export type QuestUI = {
+  name: string
+  steps: {
+    name: string
+    tasks: {
+      done: boolean
+      description: string
+    }[]
+  }[]
+  nextSteps: string[]
+}
+
+type LabelProps = EntityPropTypes & UiLabelProps
 
 export type QuestHudOptions = {
+  autoRender?: boolean
   /**
-   * Styles for the main box
+   * Styles for the whole left side panel
    */
-  hudBox?: UiTransformProps
+  leftSidePanel?: UiTransformProps
   /**
-   *  Color for Background in HEX
+   * Quest Box Style.
    */
-  backgoundHexColor?: string
-  /**
-   * Quest Name font size
-   */
-  questTitle?: {
+  questBox?: {
+    uiBackground?: UiBackgroundProps
     uiTransform?: UiTransformProps
-    labelProps?: UiLabelProps
-  }
-  stepsContainer?: UiTransformProps
-  /**
-   * Steps title font size
-   */
-  stepsTitle?: {
-    uiTransform?: UiTransformProps
-    labelProps?: UiLabelProps
   }
   /**
-   * Font size in pixels for tasks descriptions
+   * Quest Name Container
+   *
+   * The label inside is also modifiable with `label`
+   *
    */
-  taskDescription?: {
+  questNameContainer?: {
     uiTransform?: UiTransformProps
-    labelProps?: UiLabelProps
+    label?: LabelProps
+  }
+  /**
+   * Current Steps Container
+   *
+   * the labels are modifiable with `labels`
+   *
+   */
+  stepsContainer?: {
+    uiTransform: UiTransformProps
+    labels?: {
+      labelUiEntity?: UiTransformProps
+      props?: LabelProps
+    }
+    showTasksButton?: {
+      buttonUiEntity: UiTransformProps
+      buttonProps?: UiButtonProps
+    }
+  }
+  /**
+   * Step Tasks Box
+   */
+  tasksBox?: {
+    uiTransform?: UiTransformProps
+    uiBackground?: UiBackgroundProps
+    labels?: {
+      labelUiEntity?: UiTransformProps
+      props?: LabelProps
+    }
   }
   /**
    * Next steps styling
    */
   nextSteps?: {
-    uiTransform?: UiTransformProps
-    labelProps?: UiLabelProps
-  }
-}
-
-export function createQuestHUD(opts?: QuestHudOptions) {
-  let quest: QuestUI | null = null
-  let entity: Entity | null = null
-
-  ReactEcsRenderer.setUiRenderer(() => uiComponent(opts))
-
-  return {
-    upsert: (newQuest: QuestUI) => {
-      if (entity && quest) {
-        QuestComponent.createOrReplace(entity, {
-          ...newQuest
-        })
-        quest = { ...newQuest }
-      } else {
-        const questEntity = engine.addEntity()
-        QuestComponent.create(questEntity, { ...newQuest })
-        entity = questEntity
-        quest = { ...newQuest }
-      }
-    },
-    rerender: () => ReactEcsRenderer.setUiRenderer(() => uiComponent(opts))
+    nextTitleUiEntity?: UiTransformProps
+    nextTitleProps?: LabelProps
+    labels?: {
+      labelUiEntity?: UiTransformProps
+      props?: LabelProps
+    }
   }
 }
 
@@ -82,136 +107,286 @@ const QuestComponent = engine.defineComponent('dcl:quests:QuestComponent', {
   nextSteps: Schemas.Array(Schemas.String)
 })
 
-export type QuestUI = {
-  name: string
-  steps: {
-    name: string
-    tasks: {
-      done: boolean
-      description: string
-    }[]
-  }[]
-  nextSteps: string[]
+type HUDState = {
+  hideHUD: boolean
+  showTask: QuestUI['steps'][number]['tasks'] | null
 }
 
-const questUI = (quest: QuestUI, stylingOpts?: QuestHudOptions) => {
-  const nextSteps = quest.nextSteps.join(', ')
+type HUDStateHandlers = [() => HUDState, (newState: Partial<HUDState>) => void]
+
+export function createQuestHUD(opts?: QuestHudOptions) {
+  let quest: QuestUI | null = null
+  let entity: Entity | null = null
+
+  let state: HUDState = {
+    hideHUD: false,
+    showTask: null
+  }
+
+  function getState() {
+    return { ...state }
+  }
+
+  function setState(newState: Partial<HUDState>) {
+    state = {
+      ...state,
+      ...newState
+    }
+  }
+
+  if (opts?.autoRender) {
+    ReactEcsRenderer.setUiRenderer(() => HUDPanel([getState, setState], opts))
+  }
+
+  return {
+    upsert: (instance: QuestInstance) => {
+      const questUIData = generateQuestUI(instance)
+      if (entity && quest) {
+        QuestComponent.createOrReplace(entity, {
+          ...questUIData
+        })
+        quest = { ...questUIData }
+      } else {
+        const questEntity = engine.addEntity()
+        QuestComponent.create(questEntity, { ...questUIData })
+        entity = questEntity
+        quest = { ...questUIData }
+      }
+    },
+    getHUDComponent: () => () => HUDPanel([getState, setState], opts),
+    render: () => ReactEcsRenderer.setUiRenderer(() => HUDPanel([getState, setState], opts))
+  }
+}
+
+const defaultHudBox: UiTransformProps = {
+  flexDirection: 'column',
+  justifyContent: 'flex-start',
+  margin: { left: 10 },
+  positionType: 'absolute',
+  position: { top: '28%' }
+}
+
+export const HUDPanel = (handlers: HUDStateHandlers, props?: QuestHudOptions) => {
+  const [getState, setState] = handlers
+
+  const { showTask, hideHUD } = getState()
+
+  return (
+    <UiEntity
+      uiTransform={{
+        ...defaultHudBox,
+        ...(props?.leftSidePanel || {})
+      }}
+    >
+      {!showTask
+        ? [...engine.getEntitiesWith(QuestComponent)].map(([_, quest]) =>
+            QuestProgress(
+              {
+                name: quest.name,
+                steps: [...(quest.steps as unknown as QuestUI['steps'])],
+                nextSteps: [...(quest.nextSteps as unknown as QuestUI['nextSteps'])]
+              },
+              handlers,
+              props
+            )
+          )
+        : StepTasks(handlers, props)}
+      <UiEntity uiTransform={{ display: 'flex' }}>
+        {!showTask ? (
+          <Button
+            value={hideHUD ? 'Show Quest Progress' : 'Hide'}
+            variant="primary"
+            uiTransform={{ width: !hideHUD ? 80 : 120, height: !hideHUD ? 20 : 30, margin: 4 }}
+            onMouseDown={() => setState({ ...getState(), hideHUD: !hideHUD })}
+          />
+        ) : (
+          <Button
+            value="Close"
+            variant="primary"
+            uiTransform={{ width: 80, height: 20, margin: 4 }}
+            onMouseDown={() => setState({ ...getState(), showTask: null })}
+          />
+        )}
+      </UiEntity>
+    </UiEntity>
+  )
+}
+
+const QuestProgress = (quest: QuestUI, handlers: HUDStateHandlers, stylingOpts?: QuestHudOptions) => {
+  const [getState] = handlers
+
+  return (
+    <UiEntity
+      uiTransform={{
+        display: getState().hideHUD ? 'none' : 'flex',
+        flexDirection: 'column',
+        padding: 10,
+        minWidth: 180,
+        maxWidth: 400,
+        width: 180,
+        ...stylingOpts?.questBox?.uiTransform
+      }}
+      uiBackground={{
+        color: Color4.create(0, 0, 0, 0.9),
+        ...stylingOpts?.questBox?.uiBackground
+      }}
+    >
+      <UiEntity uiTransform={{ margin: { bottom: 10 }, ...stylingOpts?.questNameContainer?.uiTransform }}>
+        <Label
+          textAlign="middle-left"
+          fontSize={12}
+          value={`Quest: ${quest.name}`}
+          {...stylingOpts?.questNameContainer?.label}
+        />
+      </UiEntity>
+      <UiEntity
+        uiTransform={{
+          flexDirection: 'column',
+          padding: { top: 10, bottom: 10 },
+          ...stylingOpts?.stepsContainer?.uiTransform
+        }}
+      >
+        {[...quest.steps].map((s) => CurrentStep(s, handlers, stylingOpts))}
+      </UiEntity>
+      <UiEntity
+        uiTransform={{
+          display: 'flex',
+          flexDirection: 'column',
+          margin: { bottom: 10 },
+          ...stylingOpts?.nextSteps?.nextTitleUiEntity
+        }}
+      >
+        <Label
+          uiTransform={{
+            padding: { bottom: 10 },
+            margin: { bottom: 10 },
+            ...stylingOpts?.nextSteps?.nextTitleProps?.uiTransform
+          }}
+          textAlign="middle-left"
+          fontSize={12}
+          value="Next: "
+          {...stylingOpts?.nextSteps?.nextTitleProps}
+        />
+        {[...quest.nextSteps].map((next) => (
+          <UiEntity uiTransform={{ margin: { bottom: 5 }, ...stylingOpts?.nextSteps?.labels?.labelUiEntity }}>
+            <Label textAlign="middle-left" fontSize={11} value={next} {...stylingOpts?.nextSteps?.labels?.props} />
+          </UiEntity>
+        ))}
+      </UiEntity>
+    </UiEntity>
+  )
+}
+
+const CurrentStep = (step: QuestUI['steps'][number], handlers: HUDStateHandlers, stylingOpts?: QuestHudOptions) => {
+  return (
+    <UiEntity uiTransform={{ flexDirection: 'column', ...stylingOpts?.stepsContainer?.labels?.labelUiEntity }}>
+      <Label
+        uiTransform={{
+          overflow: 'hidden',
+          padding: { top: 10, bottom: 10 },
+          ...stylingOpts?.stepsContainer?.labels?.props?.uiTransform
+        }}
+        textAlign="middle-left"
+        fontSize={12}
+        value={`Step: ${step.name}`}
+        {...stylingOpts?.stepsContainer?.labels?.props}
+      />
+      <ShowTasksButton tasks={step.tasks} handlers={handlers} stylingOpts={stylingOpts} />
+    </UiEntity>
+  )
+}
+
+const ShowTasksButton = ({
+  tasks,
+  handlers,
+  stylingOpts
+}: {
+  tasks: QuestUI['steps'][number]['tasks']
+  handlers: HUDStateHandlers
+  stylingOpts?: QuestHudOptions
+}) => {
+  const [getState, setState] = handlers
+  return (
+    <UiEntity uiTransform={{ display: 'flex', ...stylingOpts?.stepsContainer?.showTasksButton?.buttonUiEntity }}>
+      <Button
+        value="Show tasks"
+        variant="primary"
+        uiTransform={{ width: 80, height: 20, margin: 4 }}
+        onMouseDown={() => {
+          setState({ ...getState(), showTask: tasks })
+        }}
+        {...stylingOpts?.stepsContainer?.showTasksButton?.buttonProps}
+      />
+    </UiEntity>
+  )
+}
+
+const StepTasks = ([getState]: HUDStateHandlers, stylingOpts?: QuestHudOptions) => {
+  const showTask = getState().showTask
   return (
     <UiEntity
       uiTransform={{
         flexDirection: 'column',
-        width: '100%',
-        minHeight: 20,
-        maxHeight: 100,
         padding: 10,
-        margin: 0
+        minWidth: 180,
+        maxWidth: 400,
+        width: 180,
+        ...stylingOpts?.tasksBox?.uiTransform
       }}
       uiBackground={{
-        color: stylingOpts?.backgoundHexColor
-          ? Color4.fromHexString(stylingOpts.backgoundHexColor)
-          : Color4.create(0, 0, 0, 0.9)
+        color: Color4.create(0, 0, 0, 0.9),
+        ...stylingOpts?.tasksBox?.uiBackground
       }}
     >
-      <Label
-        uiTransform={{
-          width: '100%',
-          minHeight: 12,
-          ...stylingOpts?.questTitle?.uiTransform
-        }}
-        textAlign="middle-left"
-        fontSize={12}
-        value={`Quest's Name: ${quest.name}`}
-        {...stylingOpts?.questTitle?.labelProps}
-      />
-      <UiEntity
-        uiTransform={{
-          flexDirection: 'column',
-          width: '100%',
-          padding: { top: 10, bottom: 10 },
-          overflow: 'hidden',
-          ...stylingOpts?.stepsContainer
-        }}
-      >
-        {[...quest.steps].map((s) => (
-          <UiEntity uiTransform={{ flexDirection: 'column' }}>{step(s, stylingOpts)}</UiEntity>
-        ))}
-      </UiEntity>
-      <Label
-        uiTransform={{
-          width: '100%',
-          minHeight: 12,
-          ...stylingOpts?.nextSteps?.uiTransform
-        }}
-        textAlign="middle-left"
-        fontSize={12}
-        value={`Next steps: ${nextSteps}`}
-        {...stylingOpts?.nextSteps?.labelProps}
-      />
+      {showTask != null ? showTask.map((t) => Task(t, stylingOpts)) : null}
     </UiEntity>
   )
 }
 
-const step = (step: QuestUI['steps'][number], stylingOpts?: QuestHudOptions) => {
-  return (
-    <UiEntity uiTransform={{ flexDirection: 'column' }}>
-      <Label
-        uiTransform={{
-          overflow: 'hidden',
-          padding: { top: 10, bottom: 10 },
-          ...stylingOpts?.stepsTitle?.uiTransform
-        }}
-        textAlign="middle-left"
-        fontSize={10}
-        value={`Current step: ${step.name} - Tasks: `}
-        {...stylingOpts?.stepsTitle?.labelProps}
-      />
-      {[...step.tasks].map((t) => (
-        <UiEntity>{task(t, stylingOpts)}</UiEntity>
-      ))}
-    </UiEntity>
-  )
-}
-
-const task = (task: QuestUI['steps'][number]['tasks'][number], stylingOpts?: QuestHudOptions) => (
-  <Label
-    uiTransform={{
-      overflow: 'hidden',
-      padding: { top: 10, bottom: 10 },
-      ...stylingOpts?.taskDescription?.uiTransform
-    }}
-    textAlign="middle-left"
-    fontSize={10}
-    value={`${task.done ? 'DONE: ' : 'TODO: '} ${task.description}`}
-    {...stylingOpts?.taskDescription?.labelProps}
-  />
-)
-
-const uiComponent = (props?: QuestHudOptions) => (
+const Task = (task: QuestUI['steps'][number]['tasks'][number], stylingOpts?: QuestHudOptions) => (
   <UiEntity
     uiTransform={{
-      ...defaultHudBox,
-      ...(props?.hudBox || {})
+      flexDirection: 'column',
+      margin: { bottom: 10 },
+      ...stylingOpts?.tasksBox?.labels?.labelUiEntity
     }}
   >
-    {[...engine.getEntitiesWith(QuestComponent)].map(([_, quest]) =>
-      questUI(
-        {
-          name: quest.name,
-          steps: [...(quest.steps as unknown as QuestUI['steps'])],
-          nextSteps: [...(quest.nextSteps as unknown as QuestUI['nextSteps'])]
-        },
-        props
-      )
-    )}
+    <Label
+      textAlign="middle-left"
+      fontSize={12}
+      value={`${task.done ? 'DONE: ' : 'TODO: '} ${task.description}`}
+      uiTransform={{ padding: { bottom: 10 } }}
+      {...stylingOpts?.tasksBox?.labels?.props}
+    />
   </UiEntity>
 )
 
-const defaultHudBox: UiTransformProps = {
-  flex: 1,
-  flexDirection: 'column',
-  justifyContent: 'flex-start',
-  minWidth: 250,
-  margin: { left: 10 },
-  positionType: 'absolute',
-  position: { top: '28%' }
+function generateQuestUI(questInstance: QuestInstance): QuestUI {
+  const steps: QuestUI['steps'] = []
+  const nextSteps = []
+  if (questInstance.quest.definition?.steps) {
+    for (const step of questInstance.quest.definition?.steps) {
+      if (questInstance.state.currentSteps[step.id]) {
+        const content = questInstance.state.currentSteps[step.id]
+        const newTasks = step.tasks.map((task) => {
+          return {
+            description: task.description,
+            done: !!content.tasksCompleted.find((t) => t.id == task.id)
+          }
+        })
+        steps.push({ name: step.description, tasks: newTasks })
+        nextSteps.push(
+          ...questInstance.quest.definition?.connections
+            .filter((conn) => conn.stepFrom === step.id)
+            .map(
+              (conn) =>
+                questInstance.quest.definition?.steps.find((step) => step.id === conn.stepTo)?.description ||
+                '(Step without description)'
+            )
+        )
+      }
+    }
+  }
+  const ui = { name: questInstance.quest.name, steps, nextSteps }
+  return ui
 }
