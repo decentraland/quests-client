@@ -381,7 +381,7 @@ function generateQuestUI(questInstance: QuestInstance): QuestUI {
             .map(
               (conn) =>
                 questInstance.quest.definition?.steps.find((step) => step.id === conn.stepTo)?.description ||
-                'No name :('
+                '(Step without description)'
             )
         )
       }
