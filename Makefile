@@ -10,7 +10,14 @@ test-watch:
 	node_modules/.bin/jest --detectOpenHandles --colors --runInBand --watch $(TESTARGS)
 
 build:
-	cd src/protocol && ./build.sh 
+	@mkdir -p src/protocol
+	protoc \
+  --plugin=./node_modules/.bin/protoc-gen-dcl_ts_proto \
+  --dcl_ts_proto_opt=esModuleInterop=true,returnObservable=false,outputServices=generic-definitions,fileSuffix=.gen \
+  --dcl_ts_proto_out="./src/protocol" \
+  -I="./node_modules/@dcl/protocol/public" \
+  -I="./node_modules/@dcl/protocol/proto" \
+  "./node_modules/@dcl/protocol/proto/decentraland/quests/definitions.proto"
 	./node_modules/.bin/tsc -p tsconfig.json
 
 .PHONY: build test

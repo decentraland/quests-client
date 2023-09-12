@@ -7,4 +7,4 @@ export {
   Quest,
   Action,
   StepContent
-} from './protocol/quests.gen'
+} from './protocol/decentraland/quests/definitions.gen'

@@ -44,9 +44,9 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
+    "@dcl/protocol": "^1.0.0-6160718705.commit-03626d7",
     "@dcl/rpc": "^1.1.2",
     "@dcl/sdk": "^7.1.18-5135429602.commit-241816a",
-    "deep-equal": "^2.2.0",
     "mitt": "^3.0.1"
   },
   "files": [
