@@ -114,7 +114,13 @@ type HUDState = {
 
 type HUDStateHandlers = [() => HUDState, (newState: Partial<HUDState>) => void]
 
-export function createQuestHUD(opts?: QuestHudOptions) {
+type QuestHUD = {
+  upsert: (instance: QuestInstance) => void
+  getHUDComponent: () => () => ReactEcs.JSX.Element
+  render: () => void
+}
+
+export function createQuestHUD(opts?: QuestHudOptions): QuestHUD {
   let quest: QuestUI | null = null
   let entity: Entity | null = null
 
