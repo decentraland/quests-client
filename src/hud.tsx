@@ -11,7 +11,7 @@ import ReactEcs, {
   UiTransformProps,
   EntityPropTypes
 } from '@dcl/sdk/react-ecs'
-import { QuestInstance } from './client'
+import { QuestInstanceRequired } from './client'
 
 export type QuestUI = {
   name: string
@@ -139,7 +139,7 @@ type HUDState = {
 type HUDStateHandlers = [() => HUDState, (newState: Partial<HUDState>) => void]
 
 type QuestHUD = {
-  upsert: (instance: QuestInstance) => void
+  upsert: (instance: QuestInstanceRequired) => void
   getHUDComponent: () => () => ReactEcs.JSX.Element
   render: () => void
   updateOptions: (opts: QuestHudOptions) => void
@@ -428,7 +428,7 @@ const Task = (task: QuestUI['steps'][number]['tasks'][number], stylingOpts?: Que
   </UiEntity>
 )
 
-function generateQuestUI(questInstance: QuestInstance): QuestUI {
+function generateQuestUI(questInstance: QuestInstanceRequired): QuestUI {
   const steps: QuestUI['steps'] = []
   const nextSteps = []
   if (questInstance.quest.definition?.steps) {
