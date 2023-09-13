@@ -1,9 +1,14 @@
 import { loadService, RpcClientModule } from '@dcl/rpc/dist/codegen'
 import { createRpcClient } from '@dcl/rpc'
 import { WebSocketTransport } from '@dcl/rpc/dist/transports/WebSocket'
-import deepEqual from 'deep-equal'
-import { Action, QuestState } from '.'
-import { EventResponse, Quest, QuestsServiceDefinition, QuestStateUpdate, UserUpdate } from './protocol/quests.gen'
+import {
+  Action,
+  EventResponse,
+  QuestInstance as QuestInstanceProto,
+  QuestsServiceDefinition,
+  QuestStateUpdate,
+  UserUpdate
+} from './protocol/decentraland/quests/definitions.gen'
 import { getHeaders } from '~system/SignedFetch'
 
 type QuestsClient = {
@@ -46,49 +51,26 @@ export async function createQuestsClient(wsUrl: string, questId: string): Promis
   }
 
   function handleEventIgnored(eventIgnored: string) {
-    // TODO: eventIgnored should be a string, .proto is outdated and server is not sending this event yet
-    state.processingEvents = state.processingEvents.filter((event) => event.eventId === eventIgnored)
+    state.processingEvents = state.processingEvents.filter((event) => event.eventId !== eventIgnored)
   }
 
   async function listenToSubscription(subscription: AsyncGenerator<UserUpdate, any, unknown>) {
     for await (const update of subscription) {
       console.log(`[@dcl/quests-client] update received ${JSON.stringify(update)}`)
-      if (update.message?.$case === 'eventIgnored') {
-        handleEventIgnored(update.message.eventIgnored)
-      } else if (update.message?.$case === 'questStateUpdate') {
-        handleQuestUpdate(update.message.questStateUpdate)
-      } else if (update.message?.$case === 'newQuestStarted') {
-        handleNewQuestStarted(update.message.newQuestStarted as QuestInstance)
+      if (update.eventIgnored) {
+        handleEventIgnored(update.eventIgnored)
+      } else if (update.questStateUpdate) {
+        handleQuestUpdate(update.questStateUpdate)
+      } else if (update.newQuestStarted) {
+        handleNewQuestStarted(update.newQuestStarted as QuestInstance)
       }
     }
   }
 
-  function isActionValidForQuestStates(action: Action) {
-    const match = (actionItem: Action) => deepEqual(actionItem, action)
-
-    if (state.processingEvents.some((event) => match(event.action))) {
-      return false
-    }
-
-    const quests = Object.values(state.instances)
-    return quests
-      .map((quest) => quest.state)
-      .some((questState) =>
-        Object.values(questState.currentSteps)
-          .flatMap((step) => step.toDos)
-          .flatMap((task) => task.actionItems)
-          .some(match)
-      )
-  }
-
   async function sendEvent(event: { action: Action }) {
-    if (!isActionValidForQuestStates(event.action)) {
-      return
-    }
-
     const eventResponse = await client.sendEvent(event)
-    if (eventResponse.response?.$case === 'acceptedEventId') {
-      state.processingEvents.push({ eventId: eventResponse.response.acceptedEventId, action: event.action })
+    if (eventResponse.acceptedEventId) {
+      state.processingEvents.push({ eventId: eventResponse.acceptedEventId, action: event.action })
     }
 
     return eventResponse
@@ -129,16 +111,19 @@ export async function createQuestsClient(wsUrl: string, questId: string): Promis
 
   async function start(): Promise<boolean> {
     const response = await startQuest({ questId })
-    if (response.response?.$case === 'accepted') {
+    if (response.accepted) {
       return true
-    } else if (response.response?.$case === 'internalServerError') {
-      console.error(`[@dcl/quests-client] Error while starting quests: ${response.response.internalServerError}`)
+    } else if (response.internalServerError) {
+      console.error(`[@dcl/quests-client] Internal Server Error while starting quests`)
       return false
-    } else if (response.response?.$case === 'invalidQuest') {
-      console.error(`[@dcl/quests-client] Inavld Quest: ${response.response.invalidQuest}`)
+    } else if (response.invalidQuest) {
+      console.error(`[@dcl/quests-client] Unable to start the Quest because it's an invalid Quest`)
       return false
-    } else if (response.response?.$case === 'notUuidError') {
+    } else if (response.notUuidError) {
       console.error(`[@dcl/quests-client] Provided ID is invalid`)
+      return false
+    } else if (response.questAlreadyStarted) {
+      console.error(`[@dcl/quests-client] The user has already started the Quest`)
       return false
     }
     return false
@@ -148,47 +133,52 @@ export async function createQuestsClient(wsUrl: string, questId: string): Promis
     const questInstanceIdForQuestID = getInstances().find((instance) => instance.quest.id === questId)
     if (questInstanceIdForQuestID) {
       const response = await abortQuest({ questInstanceId: questInstanceIdForQuestID.id })
-      if (response.response?.$case === 'accepted') {
+      if (response.accepted) {
         return true
-      } else if (response.response?.$case === 'internalServerError') {
-        console.error(`[@dcl/quests-client] Error while aborting quests: ${response.response.internalServerError}`)
+      } else if (response.internalServerError) {
+        console.error(`[@dcl/quests-client] Internal Server Error while aborting quests`)
         return false
-      } else if (response.response?.$case === 'notFoundQuestInstance') {
+      } else if (response.notFoundQuestInstance) {
         console.error(`[@dcl/quests-client] Quest Instance ID was not found`)
         return false
-      } else if (response.response?.$case === 'notOwner') {
+      } else if (response.notOwner) {
         console.error(`[@dcl/quests-client] Not Instance Owner`)
         return false
-      } else if (response.response?.$case === 'notUuidError') {
+      } else if (response.notUuidError) {
         console.error(`[@dcl/quests-client] Instance ID is invalid`)
         return false
       }
     }
+    console.error(`[@dcl/quests-client] Trying to abort a Quest that is not started`)
     return false
   }
 
   const allQuestsResponse = await client.getAllQuests({})
-  if (allQuestsResponse.response?.$case === 'internalServerError') {
-    console.error(`[@dcl/quests-client] Error while fetching quests: ${allQuestsResponse.response.internalServerError}`)
+  if (allQuestsResponse.internalServerError) {
+    console.error(`[@dcl/quests-client] Internal Server Error while fetching quests`)
     throw new Error(`Couldn't not initialize Quests client`)
-  } else if (allQuestsResponse.response?.$case === 'quests') {
-    const instances = allQuestsResponse.response.quests.instances
+  } else if (allQuestsResponse.quests) {
+    const instances = allQuestsResponse.quests.instances
     instances.forEach((instance) => {
       state.instances[instance.id] = instance as QuestInstance
     })
     const subscription = client.subscribe({})
 
-    const {
-      value: { message }
-    } = await subscription.next()
+    const response = await subscription.next()
 
-    if (message?.$case === 'subscribed') {
-      console.log(`[@dcl/quests-client] subscription to updates was confirmed`)
-      listenToSubscription(subscription).catch((e) => {
-        console.error(`[@dcl/quests-client] Error while receiving updates: ${e}`)
-      })
+    if (!response.done) {
+      if (response.value.subscribed) {
+        console.log(`[@dcl/quests-client] subscription to updates was confirmed`)
+        listenToSubscription(subscription).catch((e) => {
+          console.error(`[@dcl/quests-client] Error while receiving updates: ${e}`)
+        })
+      } else {
+        console.error(`[@dcl/quests-client] First message wasn't subscribe confirmation: ${response.value}`)
+        connection.close()
+        throw new Error('[@dcl/quests-client] Connection broken')
+      }
     } else {
-      console.error(`[@dcl/quests-client] Error while subscribing to updates: ${message}`)
+      console.error(`[@dcl/quests-client] Error while subscribing to updates: ${response.value}`)
       connection.close()
       throw new Error('[@dcl/quests-client] Connection broken')
     }
@@ -234,11 +224,11 @@ type ClientState = {
   onUpdate: Array<OnUpdateCallback>
 }
 
-export type QuestInstance = {
-  id: string
-  quest: Quest
-  state: QuestState
+type Required<T> = T & {
+  [P in keyof T]: NonNullable<T[P]>
 }
+
+export type QuestInstance = Required<QuestInstanceProto>
+
 export type OnStartedCallback = (instance: QuestInstance) => void
 export type OnUpdateCallback = (instance: QuestInstance) => void
-export type Quests = ReturnType<typeof createQuestsClient>

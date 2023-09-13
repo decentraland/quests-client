@@ -4,3 +4,4 @@ temp
 tsdoc-metadata.json
 coverage
 *.gen*
+src/protocol
