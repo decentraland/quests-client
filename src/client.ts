@@ -3,9 +3,8 @@ import { createRpcClient } from '@dcl/rpc'
 import { WebSocketTransport } from '@dcl/rpc/dist/transports/WebSocket'
 import {
   Action,
-  QuestState,
   EventResponse,
-  Quest,
+  QuestInstance,
   QuestsServiceDefinition,
   QuestStateUpdate,
   UserUpdate
@@ -19,8 +18,8 @@ type QuestsClient = {
   onStarted: (callback: OnStartedCallback) => void
   onUpdate: (callback: OnUpdateCallback) => void
   isQuestStarted: () => boolean
-  getQuestInstance: () => QuestInstance | null
-  getInstances: () => QuestInstance[]
+  getQuestInstance: () => QuestInstanceRequired | null
+  getInstances: () => QuestInstanceRequired[]
 }
 
 /**
@@ -29,7 +28,7 @@ type QuestsClient = {
  * @returns a Quests client that can be used to interact with the server
  */
 export async function createQuestsClient(wsUrl: string, questId: string): Promise<QuestsClient> {
-  function handleNewQuestStarted(newQuest: QuestInstance) {
+  function handleNewQuestStarted(newQuest: QuestInstanceRequired) {
     state.instances[newQuest.id] = newQuest
     if (newQuest.quest.id === questId) {
       state.onStarted.forEach((callback) => callback(newQuest))
@@ -63,7 +62,7 @@ export async function createQuestsClient(wsUrl: string, questId: string): Promis
       } else if (update.questStateUpdate) {
         handleQuestUpdate(update.questStateUpdate)
       } else if (update.newQuestStarted) {
-        handleNewQuestStarted(update.newQuestStarted as QuestInstance)
+        handleNewQuestStarted(update.newQuestStarted as QuestInstanceRequired)
       }
     }
   }
@@ -161,7 +160,7 @@ export async function createQuestsClient(wsUrl: string, questId: string): Promis
   } else if (allQuestsResponse.quests) {
     const instances = allQuestsResponse.quests.instances
     instances.forEach((instance) => {
-      state.instances[instance.id] = instance as QuestInstance
+      state.instances[instance.id] = instance as QuestInstanceRequired
     })
     const subscription = client.subscribe({})
 
@@ -219,17 +218,17 @@ async function createClient(
 }
 
 type ClientState = {
-  instances: Record<string, QuestInstance>
+  instances: Record<string, QuestInstanceRequired>
   processingEvents: Array<{ eventId: string; action: Action }>
   onStarted: Array<OnStartedCallback>
   onUpdate: Array<OnUpdateCallback>
 }
 
-export type QuestInstance = {
-  id: string
-  quest: Quest
-  state: QuestState
+type Required<T> = T & {
+  [P in keyof T]: NonNullable<T[P]>
 }
-export type OnStartedCallback = (instance: QuestInstance) => void
-export type OnUpdateCallback = (instance: QuestInstance) => void
-export type Quests = ReturnType<typeof createQuestsClient>
+
+export type QuestInstanceRequired = Required<QuestInstance>
+
+export type OnStartedCallback = (instance: QuestInstanceRequired) => void
+export type OnUpdateCallback = (instance: QuestInstanceRequired) => void
