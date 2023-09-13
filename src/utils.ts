@@ -68,7 +68,7 @@ export function validateActionItem(action: Partial<Action>): boolean {
     case 'CUSTOM': {
       const keys = Object.keys(action.parameters || {})
       if (!keys.length) {
-        throw new Error(`Custom Action must contain at least an ID parameter`)
+        throw new Error(`Custom Action must contain at least one parameter. eg: ID`)
       }
       return true
     }
