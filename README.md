@@ -11,6 +11,8 @@ Quests Client for SDK7 is a [RPC Client](https://github.com/decentraland/rpc 'De
 
 # Setup
 
+If you want to contribute to this project, you will need to install the dependencies and build the project.
+
 Start by installing NPM dependecies:
 
 ```console
@@ -26,6 +28,8 @@ $ make build
 # Usage
 
 This library is intended to be used in a Decentraland Scene and uses SDK7 features like user authentication to initialize the client.
+
+You can find the documentation to start using the library [here](https://docs.decentraland.org/creator/quests/sdk-client/).
 
 ## Install
 
@@ -46,16 +50,18 @@ executeTask(async () => {
   // retrieve websocket url from env
   const ws = 'wss://quests-rpc.decentraland.zone'
 
+  const questID = 'q123-u456-e789-s012-t345'
+
   // create quests client
   try {
-    const client = await createQuestsClient(ws)
+    const client = await createQuestsClient(ws, questID)
 
     questEventsObservable.on('message', async (action) => {
       await client.sendEvent({ action })
     })
 
-    questStartObservable.on('questId', async (questId) => {
-      await client.startQuest({ questId })
+    questStartObservable.on('start', async () => {
+      await client.startQuest()
     })
 
     client.onStarted((quest) => {
@@ -67,7 +73,7 @@ executeTask(async () => {
     })
 
     // retrieve all quest instances and their state
-    const instances = client.getInstances()
+    const userInstance = client.getQuestInstance()
     ...
   } catch (e) {
     console.log(`[Your Scene] connection to ${ws} failed! ${e}`)
@@ -77,4 +83,6 @@ executeTask(async () => {
 
 ### Scene Example: Quests Tracking
 
-In this [repository](https://github.com/decentraland/quests-scene/ 'Quests Scene repository') you may find a scene that makes use of all the Quests Client features.
+In this [repository](https://github.com/decentraland/pickup-quest-scene) you may find a scene that makes use of all the Quests Client features.
+
+Or you can go and check out the library documentation [here](https://docs.decentraland.org/creator/quests/sdk-client/)
