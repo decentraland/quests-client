@@ -1,14 +1,16 @@
-import { Action, Quest, Step, Task } from './protocol/decentraland/quests/definitions.gen'
+import { Action, Connection, Quest, QuestDefinition, Step, Task } from './protocol/decentraland/quests/definitions.gen'
 
-export type RawQuest = Omit<Quest, 'id' | 'creatorAddress' | 'active' | 'createdAt'>
+export type OmittedQuest = Omit<Quest, 'id' | 'creatorAddress' | 'active' | 'createdAt' | 'definition'>
+
+export type RawQuest = OmittedQuest & { definition: Partial<QuestDefinition> }
 
 export type CreateQuest = Partial<RawQuest> & {
   reward?: {
-    hook: {
-      webhookUrl: string
+    hook?: {
+      webhookUrl?: string
       requestBody?: Record<string, string>
     }
-    items: { name: string; imageLink: string }[]
+    items?: { name?: string; imageLink?: string }[]
   }
 }
 
@@ -103,20 +105,32 @@ export function validateStepsAndConnections(quest: Pick<CreateQuest, 'definition
     throw new Error('Quest must have a definition')
   }
 
-  if (!quest.definition.connections?.length || !Array.isArray(quest.definition.connections)) {
+  validateConnections(quest.definition.connections || [])
+
+  validateSteps(quest.definition.steps || [])
+
+  return true
+}
+
+export function validateConnections(connections: Connection[]): boolean {
+  if (!connections?.length || !Array.isArray(connections)) {
     throw new Error("Quest's definition must have its connections defined")
   }
 
-  if (!quest.definition.connections.every((connection) => connection.stepFrom?.length && connection.stepTo?.length)) {
+  if (!connections.every((connection) => connection.stepFrom?.length && connection.stepTo?.length)) {
     throw new Error("Quest's definition must have valid connections")
   }
 
-  if (!quest.definition.steps?.length || !Array.isArray(quest.definition.steps)) {
+  return true
+}
+
+export function validateSteps(steps: Step[]): boolean {
+  if (!steps?.length || !Array.isArray(steps)) {
     throw new Error("Quest's definition must have its steps defined")
   }
 
   const ids = new Set()
-  for (const step of quest.definition.steps) {
+  for (const step of steps) {
     validateStep(step)
     if (ids.has(step.id)) {
       throw new Error(`${step.id} is repeated. Each Step's id must be unique`)
@@ -161,7 +175,9 @@ export function validateCreateQuest(quest: CreateQuest): boolean {
     }
 
     if (
-      !quest.reward.items.every((item) => new RegExp(urlRegex).test(item.imageLink || '') && item.name?.length >= 3)
+      !quest.reward.items.every(
+        (item) => new RegExp(urlRegex).test(item.imageLink || '') && item?.name && item.name?.length >= 3
+      )
     ) {
       throw new Error("Quest's reward must have valid items")
     }
