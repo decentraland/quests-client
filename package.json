@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/decentraland/quests.git"
+    "url": "git+https://github.com/decentraland/quests-client.git"
   },
   "keywords": [
     "decentraland",
@@ -17,9 +17,9 @@
   ],
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/decentraland/quests/issues"
+    "url": "https://github.com/decentraland/quests-client/issues"
   },
-  "homepage": "https://github.com/decentraland/quests#readme",
+  "homepage": "https://github.com/decentraland/quests-client#readme",
   "prettier": {
     "printWidth": 120,
     "semi": false,
