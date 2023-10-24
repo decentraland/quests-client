@@ -4,8 +4,13 @@
   "description": "Quests Client",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "/dist",
+    "/dist-cjs"
+  ],
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json"
   },
   "repository": {
     "type": "git",
@@ -48,8 +53,5 @@
     "@dcl/rpc": "^1.1.2",
     "@dcl/sdk": "^7.1.18-5135429602.commit-241816a",
     "mitt": "^3.0.1"
-  },
-  "files": [
-    "/dist"
-  ]
+  }
 }
