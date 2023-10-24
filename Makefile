@@ -18,6 +18,6 @@ build:
   -I="./node_modules/@dcl/protocol/public" \
   -I="./node_modules/@dcl/protocol/proto" \
   "./node_modules/@dcl/protocol/proto/decentraland/quests/definitions.proto"
-	./node_modules/.bin/tsc -p tsconfig.json
+	./node_modules/.bin/tsc -p tsconfig.json && ./node_modules/.bin/tsc -p tsconfig.cjs.json
 
 .PHONY: build test
