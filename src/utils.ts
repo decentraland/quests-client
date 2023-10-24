@@ -19,7 +19,7 @@ export const urlRegex =
 
 export function validateStep(step: Partial<Step>): boolean {
   if (!step?.id?.length) {
-    throw new Error(`Step: ${JSON.stringify(step)} is missing an ID`)
+    throw new Error(`Step: ${JSON.stringify(step)} is missing an 'id'`)
   }
 
   if (!step?.description?.length) {
@@ -47,7 +47,7 @@ export function validateStep(step: Partial<Step>): boolean {
 
 export function validateTask(task: Partial<Task>): boolean {
   if (!task?.id?.length) {
-    throw new Error(`Task: ${JSON.stringify(task)} is missing an ID`)
+    throw new Error(`Task: ${JSON.stringify(task)} is missing an 'id'`)
   }
 
   if (!task?.description?.length) {
@@ -70,28 +70,28 @@ export function validateActionItem(action: Partial<Action>): boolean {
     case 'CUSTOM': {
       const keys = Object.keys(action.parameters || {})
       if (!keys.length) {
-        throw new Error(`Custom Action must contain at least one parameter. eg: ID`)
+        throw new Error(`'CUSTOM' Action must contain at least one parameter. eg: 'id'`)
       }
       return true
     }
     case 'LOCATION': {
       const keys = Object.keys(action.parameters || {})
-      if (!keys.includes('X') || !keys.includes('Y')) {
-        throw new Error(`Location Action must contain X and Y parameters`)
+      if (!keys.includes('x') || !keys.includes('y')) {
+        throw new Error(`'LOCATION' Action must contain 'x' and 'y' parameters`)
       }
       return true
     }
     case 'EMOTE': {
       const keys = Object.keys(action.parameters || {})
-      if (!keys.includes('X') || !keys.includes('Y') || !keys.includes('id')) {
-        throw new Error(`Emote Action must contain X, Y, and ID parameters`)
+      if (!keys.includes('x') || !keys.includes('y') || !keys.includes('id')) {
+        throw new Error(`'EMOTE' Action must contain 'x', 'y', and 'id' parameters`)
       }
       return true
     }
     case 'JUMP': {
       const keys = Object.keys(action.parameters || {})
-      if (!keys.includes('X') || !keys.includes('Y')) {
-        throw new Error(`Jump Action must contain X, Y, and ID parameters`)
+      if (!keys.includes('x') || !keys.includes('y')) {
+        throw new Error(`'JUMP' Action must contain 'x', 'y', and 'id' parameters`)
       }
       return true
     }
@@ -105,9 +105,14 @@ export function validateStepsAndConnections(quest: Pick<CreateQuest, 'definition
     throw new Error('Quest must have a definition')
   }
 
-  validateConnections(quest.definition.connections || [])
-
   validateSteps(quest.definition.steps || [])
+
+  if (quest.definition.steps!.length > 1) {
+    validateConnections(quest.definition.connections || [])
+  } else {
+    // despite it's a single step quest, 'connections` field must be defined
+    return Array.isArray(quest.definition.connections)
+  }
 
   return true
 }
@@ -119,6 +124,10 @@ export function validateConnections(connections: Connection[]): boolean {
 
   if (!connections.every((connection) => connection.stepFrom?.length && connection.stepTo?.length)) {
     throw new Error("Quest's definition must have valid connections")
+  }
+
+  if (!connections.every((connection) => connection.stepFrom != connection.stepTo)) {
+    throw new Error("Quest's connections are invalid. A Connection cannot go from and to the same step")
   }
 
   return true
