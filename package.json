@@ -10,7 +10,8 @@
     "/dist-cjs"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json"
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json",
+    "link-sdk": "cd node_modules/@dcl/sdk && npm link && cd ../js-runtime"
   },
   "repository": {
     "type": "git",
